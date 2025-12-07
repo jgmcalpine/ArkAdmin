@@ -21,6 +21,7 @@ export const NodeInfoSchema = z.object({
   network: z.string().default('unknown'),
   pubkey: z.string().optional(),
   version: z.string().optional(),
+  blockHeight: z.number().optional(),
 });
 
 export type Balance = z.infer<typeof BalanceSchema>;
