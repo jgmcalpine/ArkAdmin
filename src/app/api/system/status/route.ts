@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getBarkClient } from '@/lib/bark/client';
+import { getWalletApi } from '@/lib/bark/client';
 import { env } from '@/lib/env';
 
 const StatusResponseSchema = z.object({
@@ -15,8 +15,8 @@ type StatusResponse = z.infer<typeof StatusResponseSchema>;
 
 export async function GET() {
   try {
-    const { wallet } = getBarkClient();
-    const response = await wallet.arkInfo();
+    const walletApi = getWalletApi();
+    const response = await walletApi.arkInfo();
     const arkInfo = response.data;
 
     // Extract network from ArkInfo, defaulting to signet if not recognized
