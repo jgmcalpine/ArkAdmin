@@ -2,6 +2,7 @@ import { fetchNodeInfo, fetchBalances } from "@/lib/bark/queries";
 import { ConnectAlert } from "@/components/dashboard/connect-alert";
 import { WalletOverview } from "@/components/dashboard/wallet-overview";
 import { NodeHealth } from "@/components/dashboard/node-health";
+import { ReceiveDialog } from "@/components/dashboard/receive-dialog";
 
 export default async function Home() {
   const info = await fetchNodeInfo();
@@ -17,6 +18,10 @@ export default async function Home() {
 
   return (
     <main className="container mx-auto p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <ReceiveDialog />
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <WalletOverview balance={balances} />
