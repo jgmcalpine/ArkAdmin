@@ -62,6 +62,16 @@ export function ReceiveDialog() {
     }
   };
 
+  // Reset addresses when dialog closes to ensure new addresses are generated next time
+  useEffect(() => {
+    if (!isOpen) {
+      setArkAddress(null);
+      setBtcAddress(null);
+      setIsCopied(false);
+    }
+  }, [isOpen]);
+
+  // Fetch addresses when dialog opens and tab changes
   useEffect(() => {
     if (isOpen) {
       if (activeTab === 'ark' && !arkAddress && !isLoadingArk) {
@@ -69,11 +79,6 @@ export function ReceiveDialog() {
       } else if (activeTab === 'btc' && !btcAddress && !isLoadingBtc) {
         fetchBtcAddress();
       }
-    } else {
-      // Reset addresses when dialog closes to fetch new ones next time
-      setArkAddress(null);
-      setBtcAddress(null);
-      setIsCopied(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, activeTab]);
