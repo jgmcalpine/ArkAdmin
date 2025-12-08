@@ -160,10 +160,6 @@ export async function fetchTransactions(): Promise<Transaction[]> {
   }
 }
 
-/**
- * Fetches Ark (L2) movements history.
- * Endpoint: GET /api/v1/wallet/movements
- */
 export async function fetchArkMovements(): Promise<ArkMovement[]> {
   try {
     const baseUrl = env.BARKD_URL.replace(/\/$/, '');
@@ -175,24 +171,23 @@ export async function fetchArkMovements(): Promise<ArkMovement[]> {
       cache: 'no-store',
     });
 
+    // 1. Handle the 500 Error Gracefully
+    if (response.status === 500) {
+      console.warn('DAL: Ark History endpoint (500) is currently broken in daemon alpha.');
+      return []; // Return empty so the UI doesn't crash
+    }
+
     if (!response.ok) {
-      if (response.status !== 404) {
-        console.warn(`Ark movements fetch failed: ${response.status}`);
-      }
       return [];
     }
 
+    // ... rest of the parsing logic ...
     const rawData = await response.json();
     const result = z.array(ArkMovementSchema).safeParse(rawData);
-
-    if (!result.success) {
-      console.warn('Ark movements data malformed', result.error);
-      return [];
-    }
-
-    return result.data;
+    return result.success ? result.data : [];
+    
   } catch (error) {
-    console.error('Failed to fetch ark movements:', error);
+    console.error('Failed to fetch movements:', error);
     return [];
   }
 }

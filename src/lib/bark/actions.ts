@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { env } from '../env';
-import { SendL1Schema, SendL2Schema, type SendL1Input, type SendL2Input } from './schemas';
+import { SendL1Schema, SendL2Schema, type SendL1Input, type SendL2Input, SendLightningSchema, type SendLightningInput } from './schemas';
 
 /**
  * Generates a new On-Chain Bitcoin Address.
@@ -91,7 +91,7 @@ export async function getNewArkAddress(): Promise<string | null> {
   }
 }
 
-type SendResponse = {
+export type SendResponse = {
   success: boolean;
   message: string;
 };
@@ -207,3 +207,24 @@ export async function syncNode(): Promise<void> {
     console.error('Failed to sync node:', error);
   }
 }
+
+export async function sendLightningPayment(input: SendLightningInput): Promise<SendResponse> {
+    const parsed = SendLightningSchema.safeParse(input);
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: parsed.error.issues[0]?.message ?? 'Invalid request',
+      };
+    }
+  
+    const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+    const url = `${baseUrl}/api/v1/lightning/pay`; // Specific endpoint
+  
+    const payload = {
+      destination: parsed.data.destination,
+      amount_sat: parsed.data.amount, // Optional
+      ...(parsed.data.comment ? { comment: parsed.data.comment } : {}),
+    };
+  
+    return postJson(url, payload);
+  }

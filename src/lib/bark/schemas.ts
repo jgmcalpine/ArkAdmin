@@ -60,6 +60,13 @@ export const SendL1Schema = z.object({
     .min(546, 'Amount must be at least 546 sats (Dust Limit)'),
 });
 
+export const SendLightningSchema = z.object({
+  destination: z.string().startsWith('ln', { message: "Must be a Lightning invoice" }),
+  amount: z.coerce.number().positive().optional(), // Optional because invoice might have amount
+  comment: z.string().optional(),
+});
+
+export type SendLightningInput = z.infer<typeof SendLightningSchema>;
 export type Balance = z.infer<typeof BalanceSchema>;
 export type NodeInfo = z.infer<typeof NodeInfoSchema>;
 export type Transaction = z.infer<typeof TransactionSchema>;

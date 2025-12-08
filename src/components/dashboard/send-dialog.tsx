@@ -1,258 +1,228 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight, CheckCircle2, Loader2, Send } from 'lucide-react';
-
+import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@/components/ui/alert';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
-import { sendArkPayment, sendOnchainPayment } from '@/lib/bark/actions';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Loader2, Send, Zap, Bitcoin, CheckCircle2, ArrowRight, AlertCircle } from 'lucide-react';
+import { sendArkPayment, sendOnchainPayment, sendLightningPayment, type SendResponse } from '@/lib/bark/actions';
 
-type TabValue = 'l2' | 'l1';
-
-type Feedback = {
-  type: 'success' | 'error';
-  message: string;
-};
+type PaymentType = 'ark' | 'lightning_invoice' | 'lightning_address' | 'onchain' | 'unknown';
 
 export function SendDialog() {
-  const [tab, setTab] = useState<TabValue>('l2');
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<'address' | 'details' | 'success'>('address');
+  const [loading, setLoading] = useState(false);
+  
+  // Form State
   const [destination, setDestination] = useState('');
   const [amount, setAmount] = useState('');
   const [comment, setComment] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [detectedType, setDetectedType] = useState<PaymentType>('unknown');
 
-  const amountValue = useMemo(() => Number(amount), [amount]);
-
-  const resetForm = () => {
-    setDestination('');
-    setAmount('');
-    setComment('');
-  };
-
-  const handleDialogChange = (openState: boolean) => {
-    // Prevent closing while submitting to avoid accidental double-sends
-    if (!openState && isSubmitting) {
-      return;
-    }
-    setIsOpen(openState);
-    if (!openState) {
-      resetForm();
-      setFeedback(null);
-    }
-  };
-
-  // Auto-close dialog after successful submission
   useEffect(() => {
-    if (feedback?.type === 'success') {
-      const timer = setTimeout(() => {
-        setIsOpen(false);
-        resetForm();
-        setFeedback(null);
-      }, 2000);
-      return () => clearTimeout(timer);
+    if (!open) {
+      setStep('address');
+      setDestination('');
+      setAmount('');
+      setComment('');
+      setError(null);
+      setDetectedType('unknown');
+      setLoading(false);
     }
-  }, [feedback]);
+  }, [open]);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setFeedback(null);
-
-    if (Number.isNaN(amountValue)) {
-      setFeedback({ type: 'error', message: 'Amount must be a valid number' });
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const trimmedDestination = destination.trim();
-      if (!trimmedDestination) {
-        throw new Error('Destination is required');
-      }
-
-      const response =
-        tab === 'l2'
-          ? await sendArkPayment({
-              destination: trimmedDestination,
-              amount: amountValue,
-              comment: comment.trim() || undefined,
-            })
-          : await sendOnchainPayment({
-              destination: trimmedDestination,
-              amount: amountValue,
-            });
-
-      setFeedback({
-        type: response.success ? 'success' : 'error',
-        message: response.message,
-      });
-
-      if (response.success) {
-        resetForm();
-      }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to send payment';
-      setFeedback({ type: 'error', message });
-    } finally {
-      setIsSubmitting(false);
+  // Enhanced Detection Logic
+  const handleDestinationChange = (val: string) => {
+    setDestination(val);
+    setError(null);
+    
+    const lower = val.toLowerCase();
+    if (lower.startsWith('tark')) {
+      setDetectedType('ark');
+    } else if (lower.startsWith('ln')) {
+      setDetectedType('lightning_invoice'); // Bolt11 (No Comments)
+    } else if (lower.includes('@') || lower.match(/^[a-z0-9-_\.]+$/i)) {
+      // Very naive check for Lightning Address (user@domain)
+      // We assume it's LA if it has @ or is just text (like 'user')
+      setDetectedType('lightning_address');
+    } else if (lower.startsWith('tb1') || lower.startsWith('m') || lower.startsWith('n')) {
+      setDetectedType('onchain');
+    } else {
+      setDetectedType('unknown');
     }
   };
 
-  const isSuccess = feedback?.type === 'success';
+  const handleNext = () => {
+    if (detectedType === 'unknown') {
+      setError("Please enter a valid Ark address, Lightning Invoice, or Bitcoin address.");
+      return;
+    }
+    setStep('details');
+  };
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError(null);
+
+    let result: SendResponse | undefined;
+    const amountNum = amount ? Number(amount) : undefined;
+
+    try {
+      if (detectedType === 'ark') {
+        if (!amountNum) throw new Error("Amount is required for Ark transfers.");
+        result = await sendArkPayment({ destination, amount: amountNum, comment });
+      } 
+      else if (detectedType === 'onchain') {
+        if (!amountNum) throw new Error("Amount is required for On-Chain transfers.");
+        result = await sendOnchainPayment({ destination, amount: amountNum });
+      } 
+      else if (detectedType === 'lightning_invoice' || detectedType === 'lightning_address') {
+        // Only send comment if it's supported (Lightning Address)
+        const finalComment = detectedType === 'lightning_address' ? comment : undefined;
+        result = await sendLightningPayment({ destination, amount: amountNum, comment: finalComment });
+      }
+
+      if (result && !result.success) {
+        // Humanize common network errors
+        let msg = result.message;
+        if (msg.includes('htlc request failed')) msg = "Network Routing Failed. The ASP could not find a path to this node.";
+        if (msg.includes('connection refused')) msg = "Daemon Connection Failed. Is barkd running?";
+        setError(msg);
+        setLoading(false);
+      } else if (result && result.success) {
+        setStep('success');
+        setTimeout(() => setOpen(false), 2000);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "An unexpected error occurred";
+      setError(message);
+      setLoading(false);
+    }
+  };
+
+  const getIcon = () => {
+    switch (detectedType) {
+      case 'ark': return <Zap className="h-5 w-5 text-yellow-500" />;
+      case 'lightning_invoice': 
+      case 'lightning_address': return <Zap className="h-5 w-5 text-blue-500" />;
+      case 'onchain': return <Bitcoin className="h-5 w-5 text-orange-500" />;
+      default: return <Send className="h-5 w-5" />;
+    }
+  };
+
+  const getTypeLabel = () => {
+    switch (detectedType) {
+      case 'ark': return 'Ark Transfer (L2)';
+      case 'lightning_invoice': return 'Lightning Invoice';
+      case 'lightning_address': return 'Lightning Address';
+      case 'onchain': return 'Bitcoin Transaction (L1)';
+      default: return 'Send Payment';
+    }
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleDialogChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="default" size="default">
-          <Send className="h-4 w-4" />
-          Send
+        <Button className="gap-2">
+          <Send className="h-4 w-4" /> Send
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Send Funds</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {step === 'success' ? 'Payment Sent' : getTypeLabel()}
+          </DialogTitle>
         </DialogHeader>
 
-        {isSuccess ? (
+        {step === 'success' ? (
           <div className="flex flex-col items-center justify-center py-8 space-y-4">
             <CheckCircle2 className="h-16 w-16 text-green-500 animate-in zoom-in-50 duration-300" />
-            <div className="text-center space-y-2">
-              <h3 className="text-lg font-semibold">Transaction Broadcast!</h3>
-              <p className="text-sm text-muted-foreground">
-                Your transaction has been sent to the network.
-              </p>
-            </div>
+            <p className="text-center font-medium">Transaction Broadcasted!</p>
           </div>
         ) : (
-          <Tabs value={tab} onValueChange={(value) => setTab(value as TabValue)}>
-            <TabsList className="grid grid-cols-2">
-              <TabsTrigger value="l2">
-                <ArrowUpRight className="mr-2 h-4 w-4" />
-                Send Ark (L2)
-              </TabsTrigger>
-              <TabsTrigger value="l1">
-                <ArrowUpRight className="mr-2 h-4 w-4" />
-                Send Bitcoin (L1)
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="l2">
-              <form className="space-y-4" onSubmit={handleSubmit}>
-                <div className="space-y-2">
-                  <Label htmlFor="l2-destination">Destination</Label>
-                  <Input
-                    id="l2-destination"
-                    value={destination}
-                    onChange={(event) => setDestination(event.target.value)}
-                    placeholder="Enter Ark destination"
-                    required
-                  />
+          <div className="space-y-4 py-2">
+            {/* STAGE 1: Address Input */}
+            <div className={step === 'details' ? 'opacity-50 pointer-events-none' : ''}>
+              <Label>Destination</Label>
+              <div className="relative mt-1">
+                <Input
+                  value={destination}
+                  onChange={(e) => handleDestinationChange(e.target.value)}
+                  placeholder="Paste Invoice, Address, or user@domain"
+                  className="pr-10"
+                />
+                <div className="absolute right-3 top-2.5">
+                  {getIcon()}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="l2-amount">Amount (sats)</Label>
+              </div>
+            </div>
+
+            {/* STAGE 2: Details Input */}
+            {step === 'details' && (
+              <div className="space-y-4 animate-in slide-in-from-right-4 duration-200">
+                <div className="space-y-1">
+                  <Label>Amount (sats)</Label>
                   <Input
-                    id="l2-amount"
                     type="number"
                     value={amount}
-                    onChange={(event) => setAmount(event.target.value)}
-                    min={1}
-                    step="1"
-                    required
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder={detectedType === 'lightning_invoice' ? "Optional (if in invoice)" : "10000"}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="l2-comment">Comment (optional)</Label>
-                  <Input
-                    id="l2-comment"
-                    value={comment}
-                    onChange={(event) => setComment(event.target.value)}
-                    placeholder="Add a note for the recipient"
-                  />
-                </div>
-                {feedback?.type === 'error' ? (
-                  <Alert variant="destructive">
-                    <AlertTitle>Error</AlertTitle>
-                    <AlertDescription>{feedback.message}</AlertDescription>
-                  </Alert>
-                ) : null}
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Broadcasting...
-                    </>
-                  ) : (
-                    'Send Ark'
-                  )}
+
+                {/* Comment Logic: Only for Ark or Lightning Address */}
+                {(detectedType === 'ark' || detectedType === 'lightning_address') && (
+                  <div className="space-y-1">
+                    <Label>Comment (Optional)</Label>
+                    <Input
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="What is this for?"
+                    />
+                  </div>
+                )}
+                
+                {detectedType === 'lightning_invoice' && (
+                  <p className="text-xs text-muted-foreground italic">
+                    Comments are not supported for Bolt11 invoices.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex justify-end gap-2 mt-4">
+              {step === 'details' && (
+                <Button variant="outline" onClick={() => setStep('address')} disabled={loading}>
+                  Back
                 </Button>
-              </form>
-            </TabsContent>
-            <TabsContent value="l1">
-              <form className="space-y-4" onSubmit={handleSubmit}>
-                <div className="space-y-2">
-                  <Label htmlFor="l1-destination">Destination</Label>
-                  <Input
-                    id="l1-destination"
-                    value={destination}
-                    onChange={(event) => setDestination(event.target.value)}
-                    placeholder="Enter Bitcoin address"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="l1-amount">Amount (sats)</Label>
-                  <Input
-                    id="l1-amount"
-                    type="number"
-                    value={amount}
-                    onChange={(event) => setAmount(event.target.value)}
-                    min={1}
-                    step="1"
-                    required
-                  />
-                </div>
-                {feedback?.type === 'error' ? (
-                  <Alert variant="destructive">
-                    <AlertTitle>Error</AlertTitle>
-                    <AlertDescription>{feedback.message}</AlertDescription>
-                  </Alert>
-                ) : null}
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Broadcasting...
-                    </>
-                  ) : (
-                    'Send Bitcoin'
-                  )}
+              )}
+              
+              {step === 'address' ? (
+                <Button onClick={handleNext} disabled={detectedType === 'unknown' || !destination}>
+                  Next <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+              ) : (
+                <Button onClick={handleSubmit} disabled={loading} className="min-w-[100px]">
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send Now'}
+                </Button>
+              )}
+            </div>
+          </div>
         )}
       </DialogContent>
     </Dialog>
   );
 }
-
