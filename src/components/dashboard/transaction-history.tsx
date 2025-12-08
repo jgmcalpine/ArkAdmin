@@ -12,11 +12,13 @@ import { TransactionList } from './transaction-list';
 
 type TransactionHistoryProps = {
   arkMovements: ArkMovement[];
+  arkMovementsError: string | null;
   transactions: Transaction[];
 };
 
 export function TransactionHistory({
   arkMovements,
+  arkMovementsError,
   transactions,
 }: TransactionHistoryProps) {
   return (
@@ -31,7 +33,7 @@ export function TransactionHistory({
             <TabsTrigger value="bitcoin">Bitcoin (L1)</TabsTrigger>
           </TabsList>
           <TabsContent value="ark">
-            <ArkHistoryList movements={arkMovements} />
+            <ArkHistoryList movements={arkMovements} error={arkMovementsError} />
           </TabsContent>
           <TabsContent value="bitcoin">
             <TransactionList transactions={transactions} />

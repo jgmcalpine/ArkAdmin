@@ -1,7 +1,7 @@
  'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, RefreshCw } from 'lucide-react';
+import { ArrowDown, ArrowUp, RefreshCw, AlertTriangle, History } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -13,10 +13,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { ArkMovement } from '@/lib/bark/schemas';
 
 type ArkHistoryListProps = {
   movements: ArkMovement[];
+  error: string | null;
 };
 
 const amountFormatter = new Intl.NumberFormat('en-US');
@@ -61,7 +63,7 @@ function formatDate(timestamp: string) {
   return dateFormatter.format(parsed);
 }
 
-export function ArkHistoryList({ movements }: ArkHistoryListProps) {
+export function ArkHistoryList({ movements, error }: ArkHistoryListProps) {
   const [showSystem, setShowSystem] = useState(false);
 
   const visibleMovements = useMemo(
@@ -83,61 +85,73 @@ export function ArkHistoryList({ movements }: ArkHistoryListProps) {
           <span>Show System Events</span>
         </label>
       </div>
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Status</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="text-right">Date</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visibleMovements.length > 0 ? (
-              visibleMovements.map((movement) => {
-                const { icon: Icon, label } = getTypeMeta(movement.subsystem.kind);
-                const isRefresh = movement.subsystem.kind === 'refresh';
-                const amountClassName =
-                  movement.intended_balance_sat > 0
-                    ? 'text-green-600'
-                    : movement.intended_balance_sat < 0
-                      ? 'text-red-600'
-                      : 'text-muted-foreground';
-                const rowClassName = isRefresh ? 'text-muted-foreground' : '';
-
-                return (
-                  <TableRow key={movement.id} className={rowClassName}>
-                    <TableCell>{getStatusBadge(movement.status)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-4 w-4" />
-                        <span className="font-medium">{label}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className={`text-right font-mono text-sm ${amountClassName}`}>
-                      {isRefresh ? (
-                        <span className="text-muted-foreground">-</span>
-                      ) : (
-                        formatAmount(movement.intended_balance_sat)
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
-                      {formatDate(movement.time.created_at)}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            ) : (
+      {error ? (
+        <Alert variant="default" className="border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950 flex items-start gap-3">
+          <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+          <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+            History Unavailable: The daemon reported an internal error.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
-                  No Ark history found.
-                </TableCell>
+                <TableHead>Status</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-right">Date</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {visibleMovements.length > 0 ? (
+                visibleMovements.map((movement) => {
+                  const { icon: Icon, label } = getTypeMeta(movement.subsystem.kind);
+                  const isRefresh = movement.subsystem.kind === 'refresh';
+                  const amountClassName =
+                    movement.intended_balance_sat > 0
+                      ? 'text-green-600'
+                      : movement.intended_balance_sat < 0
+                        ? 'text-red-600'
+                        : 'text-muted-foreground';
+                  const rowClassName = isRefresh ? 'text-muted-foreground' : '';
+
+                  return (
+                    <TableRow key={movement.id} className={rowClassName}>
+                      <TableCell>{getStatusBadge(movement.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Icon className="h-4 w-4" />
+                          <span className="font-medium">{label}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className={`text-right font-mono text-sm ${amountClassName}`}>
+                        {isRefresh ? (
+                          <span className="text-muted-foreground">-</span>
+                        ) : (
+                          formatAmount(movement.intended_balance_sat)
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">
+                        {formatDate(movement.time.created_at)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="py-8">
+                    <div className="flex flex-col items-center justify-center">
+                      <History className="h-8 w-8 text-muted-foreground mb-2" />
+                      <span className="text-muted-foreground">No L2 movements found.</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }

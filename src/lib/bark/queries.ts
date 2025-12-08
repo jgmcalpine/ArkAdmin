@@ -160,7 +160,7 @@ export async function fetchTransactions(): Promise<Transaction[]> {
   }
 }
 
-export async function fetchArkMovements(): Promise<ArkMovement[]> {
+export async function fetchArkMovements(): Promise<{ data: ArkMovement[]; error: string | null }> {
   try {
     const baseUrl = env.BARKD_URL.replace(/\/$/, '');
     const url = `${baseUrl}/api/v1/wallet/movements`;
@@ -174,20 +174,26 @@ export async function fetchArkMovements(): Promise<ArkMovement[]> {
     // 1. Handle the 500 Error Gracefully
     if (response.status === 500) {
       console.warn('DAL: Ark History endpoint (500) is currently broken in daemon alpha.');
-      return []; // Return empty so the UI doesn't crash
+      return { data: [], error: 'Daemon Schema Mismatch (Alpha Bug)' };
     }
 
     if (!response.ok) {
-      return [];
+      return { data: [], error: 'Failed to fetch history' };
     }
 
     // ... rest of the parsing logic ...
     const rawData = await response.json();
     const result = z.array(ArkMovementSchema).safeParse(rawData);
-    return result.success ? result.data : [];
+    
+    if (!result.success) {
+      console.warn('DAL: Ark movements validation failed', result.error);
+      return { data: [], error: 'Failed to fetch history' };
+    }
+    
+    return { data: result.data, error: null };
     
   } catch (error) {
     console.error('Failed to fetch movements:', error);
-    return [];
+    return { data: [], error: 'Failed to fetch history' };
   }
 }

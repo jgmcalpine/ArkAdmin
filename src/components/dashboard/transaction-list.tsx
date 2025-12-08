@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, ExternalLink, Check } from 'lucide-react';
+import { Copy, ExternalLink, Check, History } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -65,8 +65,8 @@ export function TransactionList({ transactions }: TransactionListProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleCopyHex(transaction.tx)}
-                      disabled={isHexCopied}
+                      onClick={() => transaction.tx && handleCopyHex(transaction.tx)}
+                      disabled={isHexCopied || !transaction.tx}
                       className="h-8"
                     >
                       {isHexCopied ? (
@@ -104,8 +104,11 @@ export function TransactionList({ transactions }: TransactionListProps) {
             })
           ) : (
             <TableRow>
-              <TableCell colSpan={3} className="py-8 text-center text-muted-foreground">
-                No on-chain history found.
+              <TableCell colSpan={3} className="py-8">
+                <div className="flex flex-col items-center justify-center">
+                  <History className="h-8 w-8 text-muted-foreground mb-2" />
+                  <span className="text-muted-foreground">No on-chain transactions yet.</span>
+                </div>
               </TableCell>
             </TableRow>
           )}

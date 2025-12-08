@@ -11,7 +11,7 @@ export default async function Home() {
   const info = await fetchNodeInfo();
   const balances = await fetchBalances();
   const transactions = await fetchTransactions();
-  const arkMovements = await fetchArkMovements();
+  const { data: arkMovements, error: arkMovementsError } = await fetchArkMovements();
 
   if (info === null) {
     return (
@@ -41,7 +41,7 @@ export default async function Home() {
           </div>
           <NodeHealth info={info} />
         </div>
-        <TransactionHistory arkMovements={arkMovements} transactions={transactions} />
+        <TransactionHistory arkMovements={arkMovements} arkMovementsError={arkMovementsError} transactions={transactions} />
       </main>
     </>
   );

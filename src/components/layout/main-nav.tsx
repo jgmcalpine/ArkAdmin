@@ -4,9 +4,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
-  ArrowDownLeft,
-  Send,
-  Settings,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -21,21 +18,6 @@ const navItems: NavItem[] = [
     href: "/",
     label: "Dashboard",
     icon: LayoutDashboard,
-  },
-  {
-    href: "/receive",
-    label: "Receive",
-    icon: ArrowDownLeft,
-  },
-  {
-    href: "/send",
-    label: "Send",
-    icon: Send,
-  },
-  {
-    href: "/settings",
-    label: "Settings",
-    icon: Settings,
   },
 ]
 
