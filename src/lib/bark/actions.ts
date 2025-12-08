@@ -14,7 +14,7 @@ import { SendL1Schema, SendL2Schema, type SendL1Input, type SendL2Input } from '
  * Endpoint: POST /api/v1/onchain/addresses/next
  * Response: { "address": "tb1q..." }
  */
-export async function getNewAddress(): Promise<string | null> {
+export async function getNewOnchainAddress(): Promise<string | null> {
   try {
     const baseUrl = env.BARKD_URL.replace(/\/$/, '');
     const url = `${baseUrl}/api/v1/onchain/addresses/next`;
@@ -44,6 +44,49 @@ export async function getNewAddress(): Promise<string | null> {
 
   } catch (error) {
     console.error('Failed to get new address:', error);
+    return null;
+  }
+}
+
+/**
+ * Generates a new Ark L2 Address.
+ * 
+ * IMPLEMENTATION NOTE: 
+ * We use a manual 'fetch' here because the generated SDK may not support
+ * this endpoint correctly.
+ * 
+ * Endpoint: POST /api/v1/wallet/addresses/next
+ * Response: { "address": "tark..." }
+ */
+export async function getNewArkAddress(): Promise<string | null> {
+  try {
+    const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+    const url = `${baseUrl}/api/v1/wallet/addresses/next`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      console.error(`Ark address generation failed: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    if (data && typeof data.address === 'string') {
+      return data.address;
+    }
+
+    console.error('Invalid response format from daemon', data);
+    return null;
+
+  } catch (error) {
+    console.error('Failed to get new Ark address:', error);
     return null;
   }
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowDown, Check, Copy } from 'lucide-react';
+import { ArrowDown, Check, Copy, Zap, Bitcoin, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,15 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { getNewAddress } from '@/lib/bark/actions';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import { getNewOnchainAddress, getNewArkAddress } from '@/lib/bark/actions';
+
+type TabValue = 'ark' | 'btc';
 
 function truncateAddress(address: string): string {
   if (address.length <= 12) return address;
@@ -18,36 +26,64 @@ function truncateAddress(address: string): string {
 }
 
 export function ReceiveDialog() {
-  const [address, setAddress] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [arkAddress, setArkAddress] = useState<string | null>(null);
+  const [btcAddress, setBtcAddress] = useState<string | null>(null);
+  const [isLoadingArk, setIsLoadingArk] = useState(false);
+  const [isLoadingBtc, setIsLoadingBtc] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabValue>('ark');
 
-  const fetchAddress = async () => {
-    setIsLoading(true);
+  const fetchArkAddress = async () => {
+    if (arkAddress || isLoadingArk) return;
+    setIsLoadingArk(true);
     try {
-      const newAddress = await getNewAddress();
-      setAddress(newAddress);
+      const newAddress = await getNewArkAddress();
+      setArkAddress(newAddress);
     } catch (error) {
-      console.error('Failed to fetch address', error);
-      setAddress(null);
+      console.error('Failed to fetch Ark address', error);
+      setArkAddress(null);
     } finally {
-      setIsLoading(false);
+      setIsLoadingArk(false);
+    }
+  };
+
+  const fetchBtcAddress = async () => {
+    if (btcAddress || isLoadingBtc) return;
+    setIsLoadingBtc(true);
+    try {
+      const newAddress = await getNewOnchainAddress();
+      setBtcAddress(newAddress);
+    } catch (error) {
+      console.error('Failed to fetch Bitcoin address', error);
+      setBtcAddress(null);
+    } finally {
+      setIsLoadingBtc(false);
     }
   };
 
   useEffect(() => {
-    if (isOpen && !address && !isLoading) {
-      fetchAddress();
-    } else if (!isOpen) {
-      // Reset address when dialog closes to fetch a new one next time
-      setAddress(null);
+    if (isOpen) {
+      if (activeTab === 'ark' && !arkAddress && !isLoadingArk) {
+        fetchArkAddress();
+      } else if (activeTab === 'btc' && !btcAddress && !isLoadingBtc) {
+        fetchBtcAddress();
+      }
+    } else {
+      // Reset addresses when dialog closes to fetch new ones next time
+      setArkAddress(null);
+      setBtcAddress(null);
       setIsCopied(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, activeTab]);
 
-  const handleCopy = async () => {
+  const handleTabChange = (value: string) => {
+    setActiveTab(value as TabValue);
+    setIsCopied(false);
+  };
+
+  const handleCopy = async (address: string) => {
     if (!address) return;
 
     try {
@@ -59,6 +95,69 @@ export function ReceiveDialog() {
     } catch (error) {
       console.error('Failed to copy address', error);
     }
+  };
+
+  const renderAddressContent = (
+    address: string | null,
+    isLoading: boolean,
+    helperText: string,
+    onRetry: () => void,
+  ) => {
+    if (isLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center py-8 space-y-2">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Generating address...</p>
+        </div>
+      );
+    }
+
+    if (address) {
+      return (
+        <>
+          <div className="space-y-2">
+            <div className="flex items-center justify-center rounded-lg border bg-muted/50 p-4">
+              <code className="text-sm font-mono break-all text-center">
+                {address}
+              </code>
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              {truncateAddress(address)}
+            </p>
+          </div>
+          <Button
+            onClick={() => handleCopy(address)}
+            variant="outline"
+            className="w-full"
+            disabled={isCopied}
+          >
+            {isCopied ? (
+              <>
+                <Check className="h-4 w-4 mr-2" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4 mr-2" />
+                Copy to Clipboard
+              </>
+            )}
+          </Button>
+          <p className="text-xs text-muted-foreground text-center">
+            {helperText}
+          </p>
+        </>
+      );
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center py-8 space-y-2">
+        <p className="text-sm text-muted-foreground">Failed to generate address</p>
+        <Button onClick={onRetry} variant="outline" size="sm">
+          Try Again
+        </Button>
+      </div>
+    );
   };
 
   return (
@@ -73,52 +172,34 @@ export function ReceiveDialog() {
         <DialogHeader>
           <DialogTitle>Receive Funds</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <p className="text-sm text-muted-foreground">Generating address...</p>
-            </div>
-          ) : address ? (
-            <>
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Your receiving address:</p>
-                <div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-4">
-                  <code className="flex-1 text-sm font-mono break-all">
-                    {address}
-                  </code>
-                </div>
-                <p className="text-xs text-muted-foreground text-center">
-                  {truncateAddress(address)}
-                </p>
-              </div>
-              <Button
-                onClick={handleCopy}
-                variant="outline"
-                className="w-full"
-                disabled={isCopied}
-              >
-                {isCopied ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    Copy Address
-                  </>
-                )}
-              </Button>
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 space-y-2">
-              <p className="text-sm text-muted-foreground">Failed to generate address</p>
-              <Button onClick={fetchAddress} variant="outline" size="sm">
-                Try Again
-              </Button>
-            </div>
-          )}
-        </div>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="ark">
+              <Zap className="mr-2 h-4 w-4" />
+              Ark (L2)
+            </TabsTrigger>
+            <TabsTrigger value="btc">
+              <Bitcoin className="mr-2 h-4 w-4" />
+              Bitcoin (L1)
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="ark" className="space-y-4">
+            {renderAddressContent(
+              arkAddress,
+              isLoadingArk,
+              'Use this address to receive instant Ark payments.',
+              fetchArkAddress,
+            )}
+          </TabsContent>
+          <TabsContent value="btc" className="space-y-4">
+            {renderAddressContent(
+              btcAddress,
+              isLoadingBtc,
+              'Use this address to fund your wallet from a faucet.',
+              fetchBtcAddress,
+            )}
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
