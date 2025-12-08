@@ -1,6 +1,7 @@
 'use server';
 
 import { env } from '../env';
+import { SendL1Schema, SendL2Schema, type SendL1Input, type SendL2Input } from './schemas';
 
 /**
  * Generates a new On-Chain Bitcoin Address.
@@ -44,4 +45,76 @@ export async function getNewAddress(): Promise<string | null> {
     console.error('Failed to get new address:', error);
     return null;
   }
+}
+
+type SendResponse = {
+  success: boolean;
+  message: string;
+};
+
+async function postJson(url: string, body: Record<string, unknown>): Promise<SendResponse> {
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => null);
+      return {
+        success: false,
+        message: errorText || `Request failed: ${response.status} ${response.statusText}`,
+      };
+    }
+
+    return { success: true, message: 'Payment sent successfully' };
+  } catch (error) {
+    console.error('Payment request failed', error);
+    return { success: false, message: 'Network error while sending payment' };
+  }
+}
+
+export async function sendArkPayment(input: SendL2Input): Promise<SendResponse> {
+  const parsed = SendL2Schema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? 'Invalid request',
+    };
+  }
+
+  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+  const url = `${baseUrl}/api/v1/wallet/send`;
+
+  const payload = {
+    destination: parsed.data.destination,
+    amount_sat: parsed.data.amount,
+    ...(parsed.data.comment ? { comment: parsed.data.comment } : {}),
+  };
+
+  return postJson(url, payload);
+}
+
+export async function sendOnchainPayment(input: SendL1Input): Promise<SendResponse> {
+  const parsed = SendL1Schema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? 'Invalid request',
+    };
+  }
+
+  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+  const url = `${baseUrl}/api/v1/onchain/send`;
+
+  const payload = {
+    destination: parsed.data.destination,
+    amount_sat: parsed.data.amount,
+  };
+
+  return postJson(url, payload);
 }

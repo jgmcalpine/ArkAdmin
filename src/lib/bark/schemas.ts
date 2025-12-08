@@ -41,7 +41,28 @@ export const ArkMovementSchema = z.object({
   }),
 });
 
+export const SendL2Schema = z.object({
+  destination: z.string().min(10, 'Destination must be at least 10 characters'),
+  amount: z
+    .number()
+    .positive()
+    .min(10000, 'Ark payments must be at least 10,000 sats'),
+  comment: z.string().optional(),
+});
+
+export const SendL1Schema = z.object({
+  destination: z
+    .string()
+    .regex(/^(tb1|m|n).+/, 'Destination must start with tb1, m, or n'),
+  amount: z
+    .number()
+    .positive()
+    .min(546, 'Amount must be at least 546 sats (Dust Limit)'),
+});
+
 export type Balance = z.infer<typeof BalanceSchema>;
 export type NodeInfo = z.infer<typeof NodeInfoSchema>;
 export type Transaction = z.infer<typeof TransactionSchema>;
 export type ArkMovement = z.infer<typeof ArkMovementSchema>;
+export type SendL2Input = z.infer<typeof SendL2Schema>;
+export type SendL1Input = z.infer<typeof SendL1Schema>;

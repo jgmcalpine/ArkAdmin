@@ -3,6 +3,7 @@ import { ConnectAlert } from "@/components/dashboard/connect-alert";
 import { WalletOverview } from "@/components/dashboard/wallet-overview";
 import { NodeHealth } from "@/components/dashboard/node-health";
 import { ReceiveDialog } from "@/components/dashboard/receive-dialog";
+import { SendDialog } from "@/components/dashboard/send-dialog";
 import { TransactionHistory } from "@/components/dashboard/transaction-history";
 
 export default async function Home() {
@@ -23,7 +24,10 @@ export default async function Home() {
     <main className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <ReceiveDialog />
+        <div className="flex items-center gap-2">
+          <ReceiveDialog />
+          <SendDialog />
+        </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="lg:col-span-2">
