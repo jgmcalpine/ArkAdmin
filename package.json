@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "eslint",
-    "test": "vitest"
+    "test": "vitest",
+    "test:live": "vitest run src/lib/bark/contract.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
