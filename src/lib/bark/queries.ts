@@ -5,9 +5,11 @@ import {
   BalanceSchema, 
   NodeInfoSchema, 
   TransactionSchema, 
+  ArkMovementSchema,
   type Balance, 
   type NodeInfo, 
-  type Transaction 
+  type Transaction,
+  type ArkMovement, 
 } from './schemas';
 
 const ZERO_BALANCE: Balance = {
@@ -154,6 +156,43 @@ export async function fetchTransactions(): Promise<Transaction[]> {
     return result.data;
   } catch (error) {
     console.error('Failed to fetch transactions:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetches Ark (L2) movements history.
+ * Endpoint: GET /api/v1/wallet/movements
+ */
+export async function fetchArkMovements(): Promise<ArkMovement[]> {
+  try {
+    const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+    const url = `${baseUrl}/api/v1/wallet/movements`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      if (response.status !== 404) {
+        console.warn(`Ark movements fetch failed: ${response.status}`);
+      }
+      return [];
+    }
+
+    const rawData = await response.json();
+    const result = z.array(ArkMovementSchema).safeParse(rawData);
+
+    if (!result.success) {
+      console.warn('Ark movements data malformed', result.error);
+      return [];
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error('Failed to fetch ark movements:', error);
     return [];
   }
 }

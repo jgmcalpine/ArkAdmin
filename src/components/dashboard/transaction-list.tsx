@@ -3,12 +3,6 @@
 import { useState } from 'react';
 import { Copy, ExternalLink, Check } from 'lucide-react';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
   Table,
   TableBody,
   TableCell,
@@ -31,20 +25,7 @@ function truncateTxid(txid: string): string {
 }
 
 export function TransactionList({ transactions }: TransactionListProps) {
-  const [copiedTxid, setCopiedTxid] = useState<string | null>(null);
   const [copiedHex, setCopiedHex] = useState<string | null>(null);
-
-  const handleCopyTxid = async (txid: string) => {
-    try {
-      await navigator.clipboard.writeText(txid);
-      setCopiedTxid(txid);
-      setTimeout(() => {
-        setCopiedTxid(null);
-      }, 2000);
-    } catch (error) {
-      console.error('Failed to copy TXID:', error);
-    }
-  };
 
   const handleCopyHex = async (hex: string) => {
     try {
@@ -59,86 +40,78 @@ export function TransactionList({ transactions }: TransactionListProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Transaction History</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>TXID</TableHead>
-                <TableHead>Raw</TableHead>
-                <TableHead className="text-right">Link</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {transactions.length > 0 ? (
-                transactions.map((transaction) => {
-                  const isTxidCopied = copiedTxid === transaction.txid;
-                  const isHexCopied = copiedHex === transaction.tx;
-                  
-                  return (
-                    <TableRow key={transaction.txid}>
-                      <TableCell>
-                        <span className="font-mono text-sm">
-                          {truncateTxid(transaction.txid)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCopyHex(transaction.tx)}
-                          disabled={isHexCopied}
-                          className="h-8"
-                        >
-                          {isHexCopied ? (
-                            <>
-                              <Check className="h-4 w-4" />
-                              Copied
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-4 w-4" />
-                              Copy Hex
-                            </>
-                          )}
-                        </Button>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          asChild
-                        >
-                          <a
-                            href={`https://mempool.space/signet/tx/${transaction.txid}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label="View on Explorer"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                    No on-chain history found.
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>TXID</TableHead>
+            <TableHead>Raw</TableHead>
+            <TableHead className="text-right">Link</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {transactions.length > 0 ? (
+            transactions.map((transaction) => {
+              const isHexCopied = copiedHex === transaction.tx;
+              
+              return (
+                <TableRow key={transaction.txid}>
+                  <TableCell>
+                    <span className="font-mono text-sm">
+                      {truncateTxid(transaction.txid)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleCopyHex(transaction.tx)}
+                      disabled={isHexCopied}
+                      className="h-8"
+                    >
+                      {isHexCopied ? (
+                        <>
+                          <Check className="h-4 w-4" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4" />
+                          Copy Hex
+                        </>
+                      )}
+                    </Button>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      asChild
+                    >
+                      <a
+                        href={`https://mempool.space/signet/tx/${transaction.txid}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="View on Explorer"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
                   </TableCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+              );
+            })
+          ) : (
+            <TableRow>
+              <TableCell colSpan={3} className="py-8 text-center text-muted-foreground">
+                No on-chain history found.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 

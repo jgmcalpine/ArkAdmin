@@ -29,6 +29,19 @@ export const TransactionSchema = z.object({
   tx: z.string().optional(),
 });
 
+export const ArkMovementSchema = z.object({
+  id: z.number(),
+  status: z.string(),
+  intended_balance_sat: z.number(),
+  subsystem: z.object({
+    kind: z.string(),
+  }),
+  time: z.object({
+    created_at: z.string(),
+  }),
+});
+
 export type Balance = z.infer<typeof BalanceSchema>;
 export type NodeInfo = z.infer<typeof NodeInfoSchema>;
 export type Transaction = z.infer<typeof TransactionSchema>;
+export type ArkMovement = z.infer<typeof ArkMovementSchema>;
