@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { env } from '../env';
 import { SendL1Schema, SendL2Schema, type SendL1Input, type SendL2Input } from './schemas';
 
@@ -117,4 +118,49 @@ export async function sendOnchainPayment(input: SendL1Input): Promise<SendRespon
   };
 
   return postJson(url, payload);
+}
+
+/**
+ * Syncs the node by calling both wallet and onchain sync endpoints.
+ * Revalidates the dashboard page after successful sync.
+ */
+export async function syncNode(): Promise<void> {
+  try {
+    const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+    
+    // Perform both sync operations
+    const walletSyncPromise = fetch(`${baseUrl}/api/v1/wallet/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+    });
+
+    const onchainSyncPromise = fetch(`${baseUrl}/api/v1/onchain/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+    });
+
+    // Wait for both syncs to complete
+    const [walletResponse, onchainResponse] = await Promise.all([
+      walletSyncPromise,
+      onchainSyncPromise,
+    ]);
+
+    // Check if both were successful
+    if (walletResponse.ok && onchainResponse.ok) {
+      revalidatePath('/');
+    } else {
+      console.error('Sync failed:', {
+        wallet: walletResponse.status,
+        onchain: onchainResponse.status,
+      });
+    }
+  } catch (error) {
+    console.error('Failed to sync node:', error);
+  }
 }

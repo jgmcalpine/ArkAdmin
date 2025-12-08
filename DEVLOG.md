@@ -69,3 +69,11 @@ We moved our Next.js application to Port 3001.
 
 **Why this works:**
 By assigning the web application to Port 3001, we left Port 3000 open for the Daemon. Now, the web app lives at 3001 and sends messages to the Daemon at 3000 without any conflicts.
+
+### 6. VTXO Concurrency (ASP Rejection)
+**The Problem:**
+A transaction failed with `vtxo ... already registered`.
+**The Diagnosis:**
+This occurs when the wallet attempts to spend a VTXO that the ASP has already locked for the current round. This is common during "Self-Sends" if the background auto-refresh logic collides with a manual user action.
+**The Solution:**
+No action needed. The protocol correctly prevented a double-spend. The original registration (which caused the lock) typically succeeds.
