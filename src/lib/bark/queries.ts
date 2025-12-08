@@ -1,5 +1,14 @@
+import { env } from '../env';
+import { z } from 'zod';
 import { getWalletApi, getOnchainApi } from './client';
-import { BalanceSchema, NodeInfoSchema, type Balance, type NodeInfo } from './schemas';
+import { 
+  BalanceSchema, 
+  NodeInfoSchema, 
+  TransactionSchema, 
+  type Balance, 
+  type NodeInfo, 
+  type Transaction 
+} from './schemas';
 
 const ZERO_BALANCE: Balance = {
   onchainConfirmed: 0,
@@ -10,18 +19,55 @@ const ZERO_BALANCE: Balance = {
 
 /**
  * Fetches critical node metadata.
- * Prioritizes 'arkInfo' as the source of truth for network status.
+ * Uses manual fetch to hit the specific endpoints revealed by the documentation.
  */
 export async function fetchNodeInfo(): Promise<NodeInfo | null> {
   try {
-    const walletApi = getWalletApi();
+    const baseUrl = env.BARKD_URL.replace(/\/$/, '');
     
-    const response = await walletApi.arkInfo();
+    let blockHeight = 0;
+    let network = 'unknown';
+    const version = 'unknown'; // Version not currently exposed in ark-info
     
-    // Validate and Clean
+    // 1. Get Block Height from Bitcoin API
+    try {
+      const tipRes = await fetch(`${baseUrl}/api/v1/bitcoin/tip`, {
+        cache: 'no-store',
+      });
+      
+      if (tipRes.ok) {
+        const data = await tipRes.json();
+        // Mapping: JSON { "tip_height": 281745 } -> App "blockHeight"
+        if (typeof data.tip_height === 'number') {
+          blockHeight = data.tip_height;
+        }
+      }
+    } catch (e) {
+      console.warn('DAL: Failed to fetch bitcoin tip', e);
+    }
+    
+    // 2. Get Network from Wallet API
+    try {
+      const infoRes = await fetch(`${baseUrl}/api/v1/wallet/ark-info`, { 
+        cache: 'no-store' 
+      });
+      
+      if (infoRes.ok) {
+        const data = await infoRes.json();
+        // Mapping: JSON { "network": "signet" } -> App "network"
+        if (data?.network) {
+          network = data.network;
+        }
+      }
+    } catch (e) {
+      console.warn('DAL: Failed to fetch ark-info', e);
+    }
+    
+    // Validate and return
     const result = NodeInfoSchema.safeParse({
-      network: response.data.network,
-      pubkey: response.data.server_pubkey,
+      network,
+      blockHeight,
+      version,
     });
 
     if (!result.success) {
@@ -54,7 +100,7 @@ export async function fetchBalances(): Promise<Balance> {
     const rawData = {
       onchainConfirmed: onchainRes.data.confirmed_sat,
       onchainTotal: onchainRes.data.total_sat,
-      onchainPending: onchainRes.data.trusted_pending_sat, // or unconfirmed_sat depending on need
+      onchainPending: onchainRes.data.trusted_pending_sat,
       arkSpendable: arkRes.data.spendable_sat,
     };
 
@@ -69,5 +115,45 @@ export async function fetchBalances(): Promise<Balance> {
   } catch (error) {
     console.error('DAL: Failed to fetch balances', error);
     return ZERO_BALANCE;
+  }
+}
+
+/**
+ * Fetches On-Chain Transactions.
+ * Endpoint: GET /api/v1/onchain/transactions
+ */
+export async function fetchTransactions(): Promise<Transaction[]> {
+  try {
+    const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+    const url = `${baseUrl}/api/v1/onchain/transactions`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      // 404 is common if wallet is empty/fresh
+      if (response.status !== 404) {
+        console.warn(`Transactions fetch failed: ${response.status}`);
+      }
+      return [];
+    }
+
+    const rawData = await response.json();
+    
+    // Validate against our schema
+    const result = z.array(TransactionSchema).safeParse(rawData);
+    
+    if (!result.success) {
+      console.warn('Transaction data malformed', result.error);
+      return [];
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error('Failed to fetch transactions:', error);
+    return [];
   }
 }

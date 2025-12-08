@@ -24,5 +24,11 @@ export const NodeInfoSchema = z.object({
   blockHeight: z.number().optional(),
 });
 
+export const TransactionSchema = z.object({
+  txid: z.string(),
+  tx: z.string().optional(),
+});
+
 export type Balance = z.infer<typeof BalanceSchema>;
 export type NodeInfo = z.infer<typeof NodeInfoSchema>;
+export type Transaction = z.infer<typeof TransactionSchema>;

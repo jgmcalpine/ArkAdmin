@@ -1,12 +1,14 @@
-import { fetchNodeInfo, fetchBalances } from "@/lib/bark/queries";
+import { fetchNodeInfo, fetchBalances, fetchTransactions } from "@/lib/bark/queries";
 import { ConnectAlert } from "@/components/dashboard/connect-alert";
 import { WalletOverview } from "@/components/dashboard/wallet-overview";
 import { NodeHealth } from "@/components/dashboard/node-health";
 import { ReceiveDialog } from "@/components/dashboard/receive-dialog";
+import { TransactionList } from "@/components/dashboard/transaction-list";
 
 export default async function Home() {
   const info = await fetchNodeInfo();
   const balances = await fetchBalances();
+  const transactions = await fetchTransactions();
 
   if (info === null) {
     return (
@@ -22,12 +24,13 @@ export default async function Home() {
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <ReceiveDialog />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="lg:col-span-2">
           <WalletOverview balance={balances} />
         </div>
         <NodeHealth info={info} />
       </div>
+      <TransactionList transactions={transactions} />
     </main>
   );
 }
