@@ -9,6 +9,34 @@ ArkAdmin is a web-based "Control Plane" for the [Bark](https://gitlab.com/ark-bi
 - **Integration:** Connects to `barkd` (Rust) via the official TypeScript SDK.
 - **Network:** Bitcoin Signet.
 
+## Test Drive: A Walkthrough
+If you have the application running (see Installation below), follow this path to verify the entire lifecycle of an Ark Transaction.
+
+**1. The Onboarding (Funding)**
+- Navigate to the Dashboard.
+- Click Receive.
+- Select the Bitcoin (L1) tab.
+- Copy the address (tb1...) and send 50,000 sats from a Signet Faucet.
+- You can fund your Ark wallet in the same way or Onboard in step 2.
+Verification: Wait for 1 confirmation. You will see the funds appear in the Bitcoin Balance card and the On-Chain History table.
+
+**2. The Swap (L1 to L2)**
+- Navigate to the Coins page via the sidebar and click Onboard.
+- Enter 20,000 sats.
+- Click Send Now.
+Verification: Your Bitcoin Balance will decrease, and your Ark Balance will increase after a block is mined (the VTXO will be locked in the meantime). You have successfully "lifted" funds off-chain.
+
+**3. The Management (Coin Control)**
+- You will see your active VTXOs. Note the Expiry Date; this is when your funds would technically timelock if not refreshed.
+- Click the Refresh icon on a coin to manually cycle it in the next Round.
+Verification: Refresh the page after a few minutes, notice the expiry date update. After Refreshing the VTXO you will see the expiry date reset.
+
+**4. The Exit (Unilateral Redemption)**
+- On the Coins page, find a "Spendable" VTXO.
+- Click the Log Out (Exit) icon.
+- Confirm the dialog warning.
+Verification: The coin will vanish from L2. Refresh the coins page and you should see it pending. After a few minutes, you will see a new transaction in your On-Chain History on the Dashboard. You have successfully performed a unilateral exit.
+
 ## Requirements
 
 Before running this project, ensure your environment meets the following criteria. This is an advanced implementation that interacts with alpha-stage Bitcoin software and modern frontend standards.
