@@ -88,6 +88,14 @@ rustup update
 cargo build --release
 ```
 
+**Initialize wallet (Critical)**
+Create a new wallet connected to the public Signet ASP and Mempool explorer.
+
+```bash
+./target/release/bark create --signet --ark https://ark.signet.2nd.dev --esplora 
+https://mempool.space/signet/api
+```
+
 **Run the Daemon:**
 
 This will start the daemon on Port 3000 (Default)
