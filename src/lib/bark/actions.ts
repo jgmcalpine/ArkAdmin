@@ -286,6 +286,25 @@ export async function refreshAllVtxos(): Promise<SendResponse> {
 }
 
 /**
+ * Force exits all funds to Bitcoin L1 (emergency).
+ * Endpoint: POST /api/v1/exits/start/all
+ * Body: {}
+ */
+export async function forceExitAll(): Promise<SendResponse> {
+  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+  const url = `${baseUrl}/api/v1/exits/start/all`;
+
+  const result = await postJson(url, {});
+
+  if (result.success) {
+    revalidatePath('/coins');
+    return { success: true, message: 'Emergency exit started' };
+  }
+
+  return result;
+}
+
+/**
  * Exits a VTXO to L1 (Offboard).
  * Endpoint: POST /api/v1/wallet/offboard/vtxos
  * Body: { vtxos: [vtxoId] }

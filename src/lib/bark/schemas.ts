@@ -78,16 +78,53 @@ export const VtxoSchema = z.object({
   state: z.object({ type: z.string() }).optional(),
 });
 
+const ExitTransactionStatusSchema = z.object({
+  type: z.string(), // e.g., "confirmed", "broadcast-with-cpfp", "awaiting-input-confirmation"
+});
+
+const ExitTransactionSchema = z.object({
+  txid: z.string(),
+  status: ExitTransactionStatusSchema,
+});
+
+const ExitStateSchema = z.object({
+  type: z.string(), // e.g., "processing", "awaiting-delta"
+  claimable_height: z.number().optional(),
+  transactions: z.array(ExitTransactionSchema).optional(),
+  claim_txid: z.string().optional(),
+  tip_height: z.number().optional(),
+}).passthrough(); // Allow additional unknown fields for flexibility
+
 export const ExitProgressSchema = z.object({
   vtxo_id: z.string(),
-  error: z.any().optional(),
-  state: z.record(z.string(), z.any()), // Flexible object to handle the union variants
+  error: z.unknown().optional(),
+  state: ExitStateSchema,
 });
 
 export const PendingRoundSchema = z.object({
   id: z.number(),
   kind: z.string(), // e.g. "PendingConfirmation"
   round_txid: z.string().optional().nullable(),
+});
+
+export const UtxoSchema = z.object({
+  outpoint: z.string(),
+  amount_sat: z.number(),
+  confirmation_height: z.number().nullable().optional(),
+}).transform((val) => {
+  const [txid, voutStr] = val.outpoint.split(':');
+  const vout = parseInt(voutStr, 10);
+  
+  if (!txid || isNaN(vout)) {
+    throw new Error(`Invalid outpoint format: ${val.outpoint}`);
+  }
+  
+  return {
+    txid,
+    vout,
+    amount_sat: val.amount_sat,
+    confirmed_height: val.confirmation_height ?? null,
+  };
 });
 
 export type SendLightningInput = z.infer<typeof SendLightningSchema>;
@@ -100,3 +137,4 @@ export type SendL1Input = z.infer<typeof SendL1Schema>;
 export type Vtxo = z.infer<typeof VtxoSchema>;
 export type ExitProgress = z.infer<typeof ExitProgressSchema>;
 export type PendingRound = z.infer<typeof PendingRoundSchema>;
+export type Utxo = z.infer<typeof UtxoSchema>;

@@ -365,7 +365,7 @@ export function VtxoTable({ vtxos, currentHeight }: VtxoTableProps) {
                             </Tooltip>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Exit to L1</AlertDialogTitle>
+                                <AlertDialogTitle>Offboard to L1</AlertDialogTitle>
                                 <AlertDialogDescription>
                                   This will move 1 coin back to Bitcoin L1. Miner fees apply. Irreversible.
                                 </AlertDialogDescription>
@@ -376,7 +376,7 @@ export function VtxoTable({ vtxos, currentHeight }: VtxoTableProps) {
                                   onClick={() => handleExitVtxo(vtxo.id)}
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
-                                  Exit to L1
+                                  Offboard to L1
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>

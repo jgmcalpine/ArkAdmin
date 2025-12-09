@@ -9,6 +9,7 @@ import {
   VtxoSchema,
   ExitProgressSchema,
   PendingRoundSchema,
+  UtxoSchema,
   type Balance, 
   type NodeInfo, 
   type Transaction,
@@ -16,6 +17,7 @@ import {
   type Vtxo,
   type ExitProgress,
   type PendingRound,
+  type Utxo,
 } from './schemas';
 
 const ZERO_BALANCE: Balance = {
@@ -353,6 +355,51 @@ export async function fetchPendingRounds(): Promise<PendingRound[]> {
     return result.data;
   } catch (error) {
     console.error('Failed to fetch pending rounds:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetches Bitcoin UTXOs (L1 on-chain outputs).
+ * Endpoint: GET /api/v1/onchain/utxos
+ */
+export async function fetchUtxos(): Promise<Utxo[]> {
+  try {
+    const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+    const url = `${baseUrl}/api/v1/onchain/utxos`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      // 500/404 are common if there are no UTXOs or endpoint issues
+      if (response.status !== 404 && response.status !== 500) {
+        console.warn(`UTXOs fetch failed: ${response.status}`);
+      }
+      return [];
+    }
+
+    const rawData = await response.json();
+    
+    // Handle empty/null gracefully
+    if (!rawData || !Array.isArray(rawData)) {
+      return [];
+    }
+
+    // Validate against our schema
+    const result = z.array(UtxoSchema).safeParse(rawData);
+    
+    if (!result.success) {
+      console.warn('UTXO data malformed', result.error);
+      return [];
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error('Failed to fetch UTXOs:', error);
     return [];
   }
 }
