@@ -97,30 +97,37 @@ export type SendResponse = {
 };
 
 async function postJson(url: string, body: Record<string, unknown>): Promise<SendResponse> {
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store',
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => null);
-      return {
-        success: false,
-        message: errorText || `Request failed: ${response.status} ${response.statusText}`,
-      };
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify(body),
+      });
+  
+      if (!response.ok) {
+        const rawText = await response.text();
+        
+        try {
+          const data = JSON.parse(rawText);
+          if (data?.message) return { success: false, message: data.message };
+          if (data?.error) return { success: false, message: data.error };
+        } catch (e) {
+          // Not JSON, use raw text
+        }
+  
+        return {
+          success: false,
+          message: rawText || `Request failed: ${response.status} ${response.statusText}`,
+        };
+      }
+  
+      return { success: true, message: 'Action successful' };
+    } catch (error) {
+      console.error('Request failed', error);
+      return { success: false, message: 'Network error occurred' };
     }
-
-    return { success: true, message: 'Payment sent successfully' };
-  } catch (error) {
-    console.error('Payment request failed', error);
-    return { success: false, message: 'Network error while sending payment' };
   }
-}
 
 export async function sendArkPayment(input: SendL2Input): Promise<SendResponse> {
   const parsed = SendL2Schema.safeParse(input);
