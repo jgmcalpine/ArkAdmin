@@ -105,21 +105,32 @@ async function postJson(url: string, body: Record<string, unknown>): Promise<Sen
         body: JSON.stringify(body),
       });
   
+      // Read response text FIRST
+      const rawText = await response.text();
+  
       if (!response.ok) {
-        const rawText = await response.text();
-        
+        // Try to parse as JSON
         try {
           const data = JSON.parse(rawText);
           if (data?.message) return { success: false, message: data.message };
           if (data?.error) return { success: false, message: data.error };
-        } catch (e) {
-          // Not JSON, use raw text
+        } catch {
+          // Not JSON, fall through to return raw text
         }
   
+        // Return raw text if JSON parsing failed or no message/error field
         return {
           success: false,
           message: rawText || `Request failed: ${response.status} ${response.statusText}`,
         };
+      }
+  
+      // Success case: try to parse JSON for potential message
+      try {
+        const data = JSON.parse(rawText);
+        if (data?.message) return { success: true, message: data.message };
+      } catch {
+        // Not JSON, use default success message
       }
   
       return { success: true, message: 'Action successful' };
@@ -288,6 +299,25 @@ export async function exitVtxo(vtxoId: string): Promise<SendResponse> {
   if (result.success) {
     revalidatePath('/coins');
     return { success: true, message: 'VTXO exited to L1 successfully' };
+  }
+
+  return result;
+}
+
+/**
+ * Onboards L1 Bitcoin funds to Ark L2 (Deposit).
+ * Endpoint: POST /api/v1/boards/board-amount
+ * Body: { amount_sat: amount }
+ */
+export async function onboardFunds(amount: number): Promise<SendResponse> {
+  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+  const url = `${baseUrl}/api/v1/boards/board-amount`;
+
+  const result = await postJson(url, { amount_sat: amount });
+
+  if (result.success) {
+    revalidatePath('/coins');
+    return { success: true, message: 'Funds onboarded successfully' };
   }
 
   return result;

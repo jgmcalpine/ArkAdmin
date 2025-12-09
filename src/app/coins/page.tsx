@@ -1,6 +1,7 @@
 import { fetchVtxos, fetchNodeInfo, fetchExitProgress, fetchPendingRounds } from "@/lib/bark/queries"
 import { VtxoTable } from "@/components/coins/vtxo-table"
 import { RecoveryCard } from "@/components/coins/recovery-card"
+import { OnboardDialog } from "@/components/coins/onboard-dialog"
 import { Badge } from "@/components/ui/badge"
 
 export default async function CoinsPage() {
@@ -13,7 +14,10 @@ export default async function CoinsPage() {
     <main className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Ark VTXOs (L2)</h1>
-        <Badge variant="secondary">Count: {vtxos.length}</Badge>
+        <div className="flex items-center gap-3">
+          <OnboardDialog />
+          <Badge variant="secondary">Count: {vtxos.length}</Badge>
+        </div>
       </div>
       <RecoveryCard
         exits={exits}
