@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { LifeBuoy, Clock, CheckCircle, ExternalLink, Copy, Check } from "lucide-react"
+import { LifeBuoy, Clock, CheckCircle, ExternalLink, Copy, Check, Download, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import type { ExitProgress, PendingRound } from "@/lib/bark/schemas"
+import { claimVtxo } from "@/lib/bark/actions"
 
 interface RecoveryCardProps {
   exits: ExitProgress[]
@@ -27,6 +28,7 @@ interface StatusInfo {
   info?: string
   txid?: string
   icon: typeof LifeBuoy
+  ActionRequired?: boolean
 }
 
 function getMempoolUrl(txid: string, network?: string): string {
@@ -92,6 +94,17 @@ function getExitStatus(state: ExitProgress['state'], currentHeight: number): Sta
     }
   }
 
+  // PRIORITY CHECK: Claimable state (timelock expired, ready to sweep)
+  if (state.type === 'claimable' || ('claimable_since' in state && state.claimable_since)) {
+    return {
+      label: "Ready to Claim",
+      color: "green",
+      info: "Timelock expired. Click to sweep funds.",
+      icon: CheckCircle,
+      ActionRequired: true,
+    }
+  }
+
   // Case A: awaiting-delta (timelock)
   if (state.type === 'awaiting-delta' && state.claimable_height) {
     const blocksRemaining = Math.max(0, state.claimable_height - currentHeight)
@@ -99,7 +112,9 @@ function getExitStatus(state: ExitProgress['state'], currentHeight: number): Sta
       return {
         label: "Ready to Claim",
         color: "green",
+        info: "Timelock expired. Click to sweep funds.",
         icon: CheckCircle,
+        ActionRequired: true,
       }
     }
     return {
@@ -229,8 +244,8 @@ function getItemError(item: RecoveryItem): string | undefined {
 
 
 function truncateId(id: string): string {
-  if (id.length <= 16) return id
-  return `${id.slice(0, 8)}...${id.slice(-8)}`
+  if (id.length <= 12) return id
+  return `${id.slice(0, 4)}...${id.slice(-4)}`
 }
 
 function getBadgeVariant(color: StatusInfo["color"]): "default" | "secondary" | "outline" {
@@ -321,7 +336,138 @@ function TransactionRow({ txid, statusType, network }: { txid: string; statusTyp
   )
 }
 
+function RecoveryItemRow({ 
+  item, 
+  status, 
+  network, 
+  claimingId, 
+  setClaimingId 
+}: { 
+  item: RecoveryItem
+  status: StatusInfo
+  network?: string
+  claimingId: string | null
+  setClaimingId: (id: string | null) => void
+}) {
+  const StatusIcon = status.icon
+  const itemId = getItemId(item)
+  const itemError = getItemError(item)
+  const exitState = item.type === 'exit' ? item.data.state : null
+  const transactions = exitState && 'transactions' in exitState ? exitState.transactions : undefined
+  const confirmedBlock = exitState && 'confirmed_block' in exitState ? exitState.confirmed_block : undefined
+  const blockInfo = confirmedBlock ? parseConfirmedBlock(confirmedBlock) : null
+  const isClaiming = item.type === 'exit' && claimingId === item.data.vtxo_id
+
+  const handleClaim = async () => {
+    if (item.type !== 'exit') return
+    console.log('Button Clicked')
+    setClaimingId(item.data.vtxo_id)
+    try {
+      await claimVtxo(item.data.vtxo_id)
+    } catch (error) {
+      console.error('Failed to claim VTXO:', error)
+    } finally {
+      setClaimingId(null)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border p-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-mono text-muted-foreground">
+          {item.type === 'exit' ? truncateId(itemId) : `Round #${item.data.id}`}
+        </span>
+        {status.ActionRequired && item.type === 'exit' && (
+          <Button
+            size="sm"
+            onClick={handleClaim}
+            disabled={isClaiming}
+          >
+            {isClaiming ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Claiming...
+              </>
+            ) : (
+              <>
+                <Download className="mr-2 h-4 w-4" />
+                Claim Funds
+              </>
+            )}
+          </Button>
+        )}
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Badge
+          variant={getBadgeVariant(status.color)}
+          className={cn("flex items-center gap-1.5", getBadgeClassName(status.color))}
+        >
+          <StatusIcon className="h-3 w-3" />
+          {status.label}
+        </Badge>
+        {status.info && (
+          <span className="text-sm text-muted-foreground truncate max-w-full">
+            {status.txid ? (
+              <Link
+                href={getMempoolUrl(status.txid, network)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 hover:underline text-blue-600 dark:text-blue-400"
+              >
+                Tx: {truncateId(status.txid)}
+                <ExternalLink className="h-3 w-3 flex-shrink-0" />
+              </Link>
+            ) : (
+              status.info
+            )}
+          </span>
+        )}
+      </div>
+
+      {/* Confirmed Block Link for Timelock */}
+      {blockInfo && (
+        <div className="text-sm">
+          <Link
+            href={getBlockUrl(blockInfo.height, network)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 hover:underline text-blue-600 dark:text-blue-400"
+          >
+            Confirmed in Block #{blockInfo.height}
+            <ExternalLink className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
+
+      {/* Transaction List */}
+      {transactions && transactions.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-muted-foreground">Transaction History:</p>
+          <div className="space-y-1">
+            {transactions.map((tx, idx) => (
+              <TransactionRow
+                key={`${tx.txid}-${idx}`}
+                txid={tx.txid}
+                statusType={tx.status.type}
+                network={network}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {itemError && (
+        <div className="text-sm text-destructive">
+          Error: {itemError}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function RecoveryCard({ exits, rounds, currentHeight, network = 'signet' }: RecoveryCardProps) {
+  const [claimingId, setClaimingId] = useState<string | null>(null)
+
   // Combine exits and rounds into a single list
   const items: RecoveryItem[] = [
     ...exits.map((exit) => ({ type: 'exit' as const, data: exit })),
@@ -343,89 +489,17 @@ export function RecoveryCard({ exits, rounds, currentHeight, network = 'signet' 
           <div className="space-y-4">
           {items.map((item) => {
             const status = getItemStatus(item, currentHeight)
-            const StatusIcon = status.icon
             const itemId = getItemId(item)
-            const itemError = getItemError(item)
-            const exitState = item.type === 'exit' ? item.data.state : null
-            const transactions = exitState && 'transactions' in exitState ? exitState.transactions : undefined
-            const confirmedBlock = exitState && 'confirmed_block' in exitState ? exitState.confirmed_block : undefined
-            const blockInfo = confirmedBlock ? parseConfirmedBlock(confirmedBlock) : null
 
             return (
-              <div
+              <RecoveryItemRow
                 key={itemId}
-                className="flex flex-col gap-3 rounded-lg border p-4"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-mono text-muted-foreground">
-                    {item.type === 'exit' ? truncateId(itemId) : `Round #${item.data.id}`}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge
-                    variant={getBadgeVariant(status.color)}
-                    className={cn("flex items-center gap-1.5", getBadgeClassName(status.color))}
-                  >
-                    <StatusIcon className="h-3 w-3" />
-                    {status.label}
-                  </Badge>
-                  {status.info && (
-                    <span className="text-sm text-muted-foreground">
-                      {status.txid ? (
-                        <Link
-                          href={getMempoolUrl(status.txid, network)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 hover:underline text-blue-600 dark:text-blue-400"
-                        >
-                          {status.info}
-                          <ExternalLink className="h-3 w-3" />
-                        </Link>
-                      ) : (
-                        status.info
-                      )}
-                    </span>
-                  )}
-                </div>
-
-                {/* Confirmed Block Link for Timelock */}
-                {blockInfo && (
-                  <div className="text-sm">
-                    <Link
-                      href={getBlockUrl(blockInfo.height, network)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 hover:underline text-blue-600 dark:text-blue-400"
-                    >
-                      Confirmed in Block #{blockInfo.height}
-                      <ExternalLink className="h-3 w-3" />
-                    </Link>
-                  </div>
-                )}
-
-                {/* Transaction List */}
-                {transactions && transactions.length > 0 && (
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground">Transaction History:</p>
-                    <div className="space-y-1">
-                      {transactions.map((tx, idx) => (
-                        <TransactionRow
-                          key={`${tx.txid}-${idx}`}
-                          txid={tx.txid}
-                          statusType={tx.status.type}
-                          network={network}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {itemError && (
-                  <div className="text-sm text-destructive">
-                    Error: {itemError}
-                  </div>
-                )}
-              </div>
+                item={item}
+                status={status}
+                network={network}
+                claimingId={claimingId}
+                setClaimingId={setClaimingId}
+              />
             )
           })}
           </div>
@@ -434,4 +508,5 @@ export function RecoveryCard({ exits, rounds, currentHeight, network = 'signet' 
     </TooltipProvider>
   )
 }
+
 

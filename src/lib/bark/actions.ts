@@ -15,6 +15,7 @@ import { SendL1Schema, SendL2Schema, type SendL1Input, type SendL2Input, SendLig
  * Response: { "address": "tb1q..." }
  */
 export async function getNewOnchainAddress(): Promise<string | null> {
+  console.log(`[Server] Requesting new L1 address...`);
   try {
     const baseUrl = env.BARKD_URL.replace(/\/$/, '');
     const url = `${baseUrl}/api/v1/onchain/addresses/next`;
@@ -337,6 +338,40 @@ export async function onboardFunds(amount: number): Promise<SendResponse> {
   if (result.success) {
     revalidatePath('/coins');
     return { success: true, message: 'Funds onboarded successfully' };
+  }
+
+  return result;
+}
+
+/**
+ * Claims a VTXO by broadcasting the sweep transaction to L1.
+ * Endpoint: POST /api/v1/exits/claim/vtxos
+ * Body: { vtxos: [vtxoId], destination: address }
+ */
+export async function claimVtxo(vtxoId: string): Promise<SendResponse> {
+  console.log(`[Server] Starting claim for VTXO: ${vtxoId}`);
+  // First, get a new onchain address for the destination
+  const destination = await getNewOnchainAddress();
+  
+  if (!destination) {
+    return {
+      success: false,
+      message: 'Failed to generate destination address',
+    };
+  }
+
+  console.log(`[Server] Generated sweep address: ${destination}`);
+
+  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+  const url = `${baseUrl}/api/v1/exits/claim/vtxos`;
+
+  const result = await postJson(url, { vtxos: [vtxoId], destination });
+
+  console.log(`[Server] Claim response:`, JSON.stringify(result));
+
+  if (result.success) {
+    revalidatePath('/coins');
+    return { success: true, message: 'Funds claimed successfully' };
   }
 
   return result;

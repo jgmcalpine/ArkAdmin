@@ -4,7 +4,6 @@ import { UtxoTable } from "@/components/coins/utxo-table"
 import { RecoveryCard } from "@/components/coins/recovery-card"
 import { OnboardDialog } from "@/components/coins/onboard-dialog"
 import { EmergencyExitButton } from "@/components/coins/emergency-exit-button"
-import { Badge } from "@/components/ui/badge"
 
 export default async function CoinsPage() {
   const vtxos = await fetchVtxos()
@@ -32,7 +31,6 @@ export default async function CoinsPage() {
         <div className="flex items-center gap-3">
           <EmergencyExitButton disabled={emergencyDisabled} />
           <OnboardDialog />
-          <Badge variant="secondary">Count: {vtxos.length}</Badge>
         </div>
       </div>
       <RecoveryCard
