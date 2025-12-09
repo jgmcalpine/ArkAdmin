@@ -7,11 +7,15 @@ import {
   TransactionSchema, 
   ArkMovementSchema,
   VtxoSchema,
+  ExitProgressSchema,
+  PendingRoundSchema,
   type Balance, 
   type NodeInfo, 
   type Transaction,
   type ArkMovement,
   type Vtxo,
+  type ExitProgress,
+  type PendingRound,
 } from './schemas';
 
 const ZERO_BALANCE: Balance = {
@@ -258,6 +262,97 @@ export async function fetchVtxos(): Promise<Vtxo[]> {
     return result.data;
   } catch (error) {
     console.error('Failed to fetch VTXOs:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetches exit progress for recovering funds (unilateral exits).
+ * Endpoint: POST /api/v1/exits/progress
+ */
+export async function fetchExitProgress(): Promise<ExitProgress[]> {
+  try {
+    const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+    const url = `${baseUrl}/api/v1/exits/progress`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      // 404 is common if there are no exits
+      if (response.status !== 404) {
+        console.warn(`Exit progress fetch failed: ${response.status}`);
+      }
+      return [];
+    }
+
+    const rawData = await response.json();
+    
+    // Handle empty/null gracefully
+    if (!rawData || !rawData.exits) {
+      return [];
+    }
+
+    // Validate against our schema
+    const result = z.array(ExitProgressSchema).safeParse(rawData.exits);
+    
+    if (!result.success) {
+      console.warn('Exit progress data malformed', result.error);
+      return [];
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error('Failed to fetch exit progress:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetches pending rounds (collaborative exits/nice exits).
+ * Endpoint: GET /api/v1/wallet/rounds
+ */
+export async function fetchPendingRounds(): Promise<PendingRound[]> {
+  try {
+    const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+    const url = `${baseUrl}/api/v1/wallet/rounds`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      // 404/500 are common if there are no rounds or endpoint issues
+      if (response.status !== 404 && response.status !== 500) {
+        console.warn(`Pending rounds fetch failed: ${response.status}`);
+      }
+      return [];
+    }
+
+    const rawData = await response.json();
+    
+    // Handle empty/null gracefully
+    if (!rawData || !Array.isArray(rawData)) {
+      return [];
+    }
+
+    // Validate against our schema
+    const result = z.array(PendingRoundSchema).safeParse(rawData);
+    
+    if (!result.success) {
+      console.warn('Pending rounds data malformed', result.error);
+      return [];
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error('Failed to fetch pending rounds:', error);
     return [];
   }
 }

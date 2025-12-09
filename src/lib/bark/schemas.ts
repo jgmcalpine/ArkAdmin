@@ -78,6 +78,18 @@ export const VtxoSchema = z.object({
   state: z.object({ type: z.string() }).optional(),
 });
 
+export const ExitProgressSchema = z.object({
+  vtxo_id: z.string(),
+  error: z.any().optional(),
+  state: z.record(z.string(), z.any()), // Flexible object to handle the union variants
+});
+
+export const PendingRoundSchema = z.object({
+  id: z.number(),
+  kind: z.string(), // e.g. "PendingConfirmation"
+  round_txid: z.string().optional().nullable(),
+});
+
 export type SendLightningInput = z.infer<typeof SendLightningSchema>;
 export type Balance = z.infer<typeof BalanceSchema>;
 export type NodeInfo = z.infer<typeof NodeInfoSchema>;
@@ -86,3 +98,5 @@ export type ArkMovement = z.infer<typeof ArkMovementSchema>;
 export type SendL2Input = z.infer<typeof SendL2Schema>;
 export type SendL1Input = z.infer<typeof SendL1Schema>;
 export type Vtxo = z.infer<typeof VtxoSchema>;
+export type ExitProgress = z.infer<typeof ExitProgressSchema>;
+export type PendingRound = z.infer<typeof PendingRoundSchema>;
