@@ -6,10 +6,12 @@ import {
   NodeInfoSchema, 
   TransactionSchema, 
   ArkMovementSchema,
+  VtxoSchema,
   type Balance, 
   type NodeInfo, 
   type Transaction,
-  type ArkMovement, 
+  type ArkMovement,
+  type Vtxo,
 } from './schemas';
 
 const ZERO_BALANCE: Balance = {
@@ -195,5 +197,45 @@ export async function fetchArkMovements(): Promise<{ data: ArkMovement[]; error:
   } catch (error) {
     console.error('Failed to fetch movements:', error);
     return { data: [], error: 'Failed to fetch history' };
+  }
+}
+
+/**
+ * Fetches VTXOs (Ark Coins) from the wallet.
+ * Endpoint: GET /api/v1/wallet/vtxos
+ */
+export async function fetchVtxos(): Promise<Vtxo[]> {
+  try {
+    const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+    const url = `${baseUrl}/api/v1/wallet/vtxos`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      // 404 is common if wallet is empty/fresh
+      if (response.status !== 404) {
+        console.warn(`VTXOs fetch failed: ${response.status}`);
+      }
+      return [];
+    }
+
+    const rawData = await response.json();
+    
+    // Validate against our schema
+    const result = z.array(VtxoSchema).safeParse(rawData);
+    
+    if (!result.success) {
+      console.warn('VTXO data malformed', result.error);
+      return [];
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error('Failed to fetch VTXOs:', error);
+    return [];
   }
 }

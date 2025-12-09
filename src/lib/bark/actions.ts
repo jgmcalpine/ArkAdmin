@@ -228,3 +228,41 @@ export async function sendLightningPayment(input: SendLightningInput): Promise<S
   
     return postJson(url, payload);
   }
+
+/**
+ * Refreshes a specific VTXO by ID.
+ * Endpoint: POST /api/v1/wallet/refresh/vtxos
+ * Body: { vtxos: [vtxoId] }
+ */
+export async function refreshVtxo(vtxoId: string): Promise<SendResponse> {
+  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+  const url = `${baseUrl}/api/v1/wallet/refresh/vtxos`;
+
+  const result = await postJson(url, { vtxos: [vtxoId] });
+
+  if (result.success) {
+    revalidatePath('/coins');
+    return { success: true, message: 'VTXO refreshed successfully' };
+  }
+
+  return result;
+}
+
+/**
+ * Refreshes all VTXOs.
+ * Endpoint: POST /api/v1/wallet/refresh/all
+ * Body: {}
+ */
+export async function refreshAllVtxos(): Promise<SendResponse> {
+  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+  const url = `${baseUrl}/api/v1/wallet/refresh/all`;
+
+  const result = await postJson(url, {});
+
+  if (result.success) {
+    revalidatePath('/coins');
+    return { success: true, message: 'All VTXOs refreshed successfully' };
+  }
+
+  return result;
+}

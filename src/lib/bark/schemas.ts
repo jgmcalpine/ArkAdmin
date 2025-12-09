@@ -66,6 +66,14 @@ export const SendLightningSchema = z.object({
   comment: z.string().optional(),
 });
 
+export const VtxoSchema = z.object({
+  id: z.string(),
+  amount_sat: z.number(),
+  expiry_height: z.number(),
+  round_txid: z.string().optional(),
+  state: z.object({ type: z.string() }).optional(),
+});
+
 export type SendLightningInput = z.infer<typeof SendLightningSchema>;
 export type Balance = z.infer<typeof BalanceSchema>;
 export type NodeInfo = z.infer<typeof NodeInfoSchema>;
@@ -73,3 +81,4 @@ export type Transaction = z.infer<typeof TransactionSchema>;
 export type ArkMovement = z.infer<typeof ArkMovementSchema>;
 export type SendL2Input = z.infer<typeof SendL2Schema>;
 export type SendL1Input = z.infer<typeof SendL1Schema>;
+export type Vtxo = z.infer<typeof VtxoSchema>;

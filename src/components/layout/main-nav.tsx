@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
+  Coins,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -18,6 +19,11 @@ const navItems: NavItem[] = [
     href: "/",
     label: "Dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    href: "/coins",
+    label: "Coins",
+    icon: Coins,
   },
 ]
 
