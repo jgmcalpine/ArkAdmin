@@ -1,6 +1,6 @@
 # ArkAdmin
 
-ArkAdmin is a modern, web-based Control Plane for [barkd](https://gitlab.com/ark-bitcoin/bark) (the Bark Wallet Daemon). It provides a visual interface for the Ark Layer 2 Protocol, enabling users to seamlessly swap between L1 and L2, monitor VTXO expirations, and perform trustless unilateral exits without touching the command line.
+ArkAdmin is a modern, web-based Control Plane for [barkd](https://gitlab.com/ark-bitcoin/barkd-clients/-/tree/master/clients/typescript?ref_type=heads) (the Bark Wallet Daemon). It provides a visual interface for the Ark Layer 2 Protocol, enabling users to seamlessly swap between L1 and L2, monitor VTXO expirations, and perform trustless unilateral exits without touching the command line.
 
 ## Architecture
 
