@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Copy, Check, RefreshCw, Loader2 } from "lucide-react"
+import { Copy, Check, RefreshCw, Loader2, LogOut } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -15,9 +15,20 @@ import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardAction, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import type { Vtxo } from "@/lib/bark/schemas"
-import { refreshVtxo, refreshAllVtxos } from "@/lib/bark/actions"
+import { refreshVtxo, refreshAllVtxos, exitVtxo } from "@/lib/bark/actions"
 
 interface VtxoTableProps {
   vtxos: Vtxo[]
@@ -91,6 +102,7 @@ function formatEstimatedDate(date: Date): string {
 export function VtxoTable({ vtxos, currentHeight }: VtxoTableProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [refreshingId, setRefreshingId] = useState<string | null>(null)
+  const [exitingId, setExitingId] = useState<string | null>(null)
   const [isRefreshingAll, setIsRefreshingAll] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -140,6 +152,22 @@ export function VtxoTable({ vtxos, currentHeight }: VtxoTableProps) {
       setError(message)
     } finally {
       setIsRefreshingAll(false)
+    }
+  }
+
+  const handleExitVtxo = async (vtxoId: string) => {
+    setExitingId(vtxoId)
+    setError(null)
+    try {
+      const result = await exitVtxo(vtxoId)
+      if (!result.success) {
+        setError(result.message)
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to exit VTXO"
+      setError(message)
+    } finally {
+      setExitingId(null)
     }
   }
 
@@ -198,13 +226,13 @@ export function VtxoTable({ vtxos, currentHeight }: VtxoTableProps) {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <div className="overflow-x-auto">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
+                  <TableHead className="max-w-[80px] truncate md:max-w-[150px]">ID</TableHead>
                   <TableHead>Amount</TableHead>
-                  <TableHead>Expiry</TableHead>
+                  <TableHead className="hidden md:table-cell">Expiry</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -222,9 +250,13 @@ export function VtxoTable({ vtxos, currentHeight }: VtxoTableProps) {
                   const canRefresh = isSpendable && !isExpired
                   const refreshDisabled = isRefreshing || !canRefresh
 
+                  const isExiting = exitingId === vtxo.id
+                  const isLocked = vtxo.state?.type === "locked" || vtxo.state?.type === "spending"
+                  const exitDisabled = isExiting || isLocked
+
                   return (
                     <TableRow key={vtxo.id}>
-                      <TableCell>
+                      <TableCell className="max-w-[80px] truncate md:max-w-[150px]">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-sm">
                             {truncateId(vtxo.id)}
@@ -249,10 +281,10 @@ export function VtxoTable({ vtxos, currentHeight }: VtxoTableProps) {
                           {formatSatoshis(vtxo.amount_sat)} sats
                         </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <div className="space-y-1">
                           {isExpired ? (
-                            <Badge variant="destructive">Expired</Badge>
+                            <Badge>Expired</Badge>
                           ) : (
                             <>
                               <div className="flex items-center gap-2">
@@ -280,29 +312,76 @@ export function VtxoTable({ vtxos, currentHeight }: VtxoTableProps) {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRefreshVtxo(vtxo.id)}
-                              disabled={refreshDisabled}
-                            >
-                              {isRefreshing ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <RefreshCw className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>
-                              {refreshDisabled && !isRefreshing
-                                ? "Cannot refresh expired or pending coins."
-                                : "Refresh VTXO"}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
+                        <div className="flex items-center gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRefreshVtxo(vtxo.id)}
+                                disabled={refreshDisabled}
+                              >
+                                {isRefreshing ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>
+                                {refreshDisabled && !isRefreshing
+                                  ? "Cannot refresh expired or pending coins."
+                                  : "Refresh VTXO"}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <AlertDialog>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      disabled={exitDisabled}
+                                    >
+                                      {isExiting ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <LogOut className="h-4 w-4 text-destructive" />
+                                      )}
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>
+                                  {exitDisabled && !isExiting
+                                    ? "Cannot exit locked or spending coins."
+                                    : "Exit to L1"}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Exit to L1</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will move 1 coin back to Bitcoin L1. Miner fees apply. Irreversible.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleExitVtxo(vtxo.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Exit to L1
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   )

@@ -266,3 +266,22 @@ export async function refreshAllVtxos(): Promise<SendResponse> {
 
   return result;
 }
+
+/**
+ * Exits a VTXO to L1 (Offboard).
+ * Endpoint: POST /api/v1/wallet/offboard/vtxos
+ * Body: { vtxos: [vtxoId] }
+ */
+export async function exitVtxo(vtxoId: string): Promise<SendResponse> {
+  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+  const url = `${baseUrl}/api/v1/wallet/offboard/vtxos`;
+
+  const result = await postJson(url, { vtxos: [vtxoId] });
+
+  if (result.success) {
+    revalidatePath('/coins');
+    return { success: true, message: 'VTXO exited to L1 successfully' };
+  }
+
+  return result;
+}
