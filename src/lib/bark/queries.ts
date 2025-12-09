@@ -50,7 +50,12 @@ export async function fetchNodeInfo(): Promise<NodeInfo | null> {
       console.warn('DAL: Failed to fetch bitcoin tip', e);
     }
     
-    // 2. Get Network from Wallet API
+    // 2. Get Network and Policy fields from Wallet API
+    let roundInterval: string | undefined;
+    let minBoardAmount: number | undefined;
+    let serverPubkey: string | undefined;
+    let vtxoExpiryDelta: number | undefined;
+    
     try {
       const infoRes = await fetch(`${baseUrl}/api/v1/wallet/ark-info`, { 
         cache: 'no-store' 
@@ -62,6 +67,19 @@ export async function fetchNodeInfo(): Promise<NodeInfo | null> {
         if (data?.network) {
           network = data.network;
         }
+        // Mapping policy fields: snake_case -> camelCase
+        if (data?.round_interval) {
+          roundInterval = data.round_interval;
+        }
+        if (typeof data?.min_board_amount_sat === 'number') {
+          minBoardAmount = data.min_board_amount_sat;
+        }
+        if (data?.server_pubkey) {
+          serverPubkey = data.server_pubkey;
+        }
+        if (typeof data?.vtxo_expiry_delta === 'number') {
+          vtxoExpiryDelta = data.vtxo_expiry_delta;
+        }
       }
     } catch (e) {
       console.warn('DAL: Failed to fetch ark-info', e);
@@ -72,6 +90,10 @@ export async function fetchNodeInfo(): Promise<NodeInfo | null> {
       network,
       blockHeight,
       version,
+      roundInterval,
+      minBoardAmount,
+      serverPubkey,
+      vtxoExpiryDelta,
     });
 
     if (!result.success) {

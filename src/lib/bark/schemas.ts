@@ -15,13 +15,17 @@ export const BalanceSchema = z.object({
 
 /**
  * Node Info Schema
- * - captures essential daemon metadata
+ * - captures essential daemon metadata and ASP policy fields
  */
 export const NodeInfoSchema = z.object({
   network: z.string().default('unknown'),
   pubkey: z.string().optional(),
   version: z.string().optional(),
   blockHeight: z.number().optional(),
+  roundInterval: z.string().optional(), // e.g. "30s"
+  minBoardAmount: z.number().optional(),
+  serverPubkey: z.string().optional(),
+  vtxoExpiryDelta: z.number().optional(), // e.g. 144 blocks
 });
 
 export const TransactionSchema = z.object({

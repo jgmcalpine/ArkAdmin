@@ -1,7 +1,7 @@
 import { fetchNodeInfo, fetchBalances, fetchTransactions, fetchArkMovements } from "@/lib/bark/queries";
 import { ConnectAlert } from "@/components/dashboard/connect-alert";
 import { WalletOverview } from "@/components/dashboard/wallet-overview";
-import { NodeHealth } from "@/components/dashboard/node-health";
+import { NetworkPolicyCard } from "@/components/dashboard/network-policy-card";
 import { ReceiveDialog } from "@/components/dashboard/receive-dialog";
 import { SendDialog } from "@/components/dashboard/send-dialog";
 import { TransactionHistory } from "@/components/dashboard/transaction-history";
@@ -39,7 +39,7 @@ export default async function Home() {
           <div className="lg:col-span-2">
             <WalletOverview balance={balances} />
           </div>
-          <NodeHealth info={info} />
+          <NetworkPolicyCard info={info} />
         </div>
         <TransactionHistory arkMovements={arkMovements} arkMovementsError={arkMovementsError} transactions={transactions} />
       </main>
