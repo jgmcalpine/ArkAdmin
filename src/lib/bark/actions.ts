@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { env } from '../env';
-import { SendL1Schema, SendL2Schema, type SendL1Input, type SendL2Input, SendLightningSchema, type SendLightningInput } from './schemas';
+import { SendL1Schema, SendL2Schema, type SendL1Input, type SendL2Input, SendLightningSchema, type SendLightningInput, CreateInvoiceSchema, type CreateInvoiceInput } from './schemas';
 
 /**
  * Generates a new On-Chain Bitcoin Address.
@@ -95,6 +95,12 @@ export async function getNewArkAddress(): Promise<string | null> {
 export type SendResponse = {
   success: boolean;
   message: string;
+};
+
+export type CreateInvoiceResponse = {
+  success: boolean;
+  invoice?: string;
+  message?: string;
 };
 
 async function postJson(url: string, body: Record<string, unknown>): Promise<SendResponse> {
@@ -247,6 +253,79 @@ export async function sendLightningPayment(input: SendLightningInput): Promise<S
   
     return postJson(url, payload);
   }
+
+/**
+ * Creates a Lightning invoice for receiving funds.
+ * Endpoint: POST /api/v1/lightning/receives/invoice
+ * Body: { amount_sat: input.amount, description: input.description }
+ */
+export async function createLightningInvoice(input: CreateInvoiceInput): Promise<CreateInvoiceResponse> {
+  const parsed = CreateInvoiceSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? 'Invalid request',
+    };
+  }
+
+  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+  const url = `${baseUrl}/api/v1/lightning/receives/invoice`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({
+        amount_sat: parsed.data.amount,
+        description: parsed.data.description,
+      }),
+    });
+
+    const rawText = await response.text();
+
+    if (!response.ok) {
+      try {
+        const data = JSON.parse(rawText);
+        return {
+          success: false,
+          message: data?.message || data?.error || rawText || `Request failed: ${response.status} ${response.statusText}`,
+        };
+      } catch {
+        return {
+          success: false,
+          message: rawText || `Request failed: ${response.status} ${response.statusText}`,
+        };
+      }
+    }
+
+    try {
+      const data = JSON.parse(rawText);
+      if (data?.invoice) {
+        return {
+          success: true,
+          invoice: data.invoice,
+          message: data?.message || 'Invoice created successfully',
+        };
+      }
+      return {
+        success: false,
+        message: data?.message || 'Invalid response format: missing invoice',
+      };
+    } catch {
+      return {
+        success: false,
+        message: 'Invalid response format: not JSON',
+      };
+    }
+  } catch (error) {
+    console.error('Failed to create invoice', error);
+    return {
+      success: false,
+      message: 'Network error occurred',
+    };
+  }
+}
 
 /**
  * Refreshes a specific VTXO by ID.

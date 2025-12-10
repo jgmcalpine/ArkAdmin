@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Send, Zap, Bitcoin, CheckCircle2, ArrowRight, AlertCircle } from 'lucide-react';
+import { Loader2, Send, Zap, Bitcoin, CheckCircle2, ArrowRight, AlertCircle, Ship } from 'lucide-react';
 import { sendArkPayment, sendOnchainPayment, sendLightningPayment, type SendResponse } from '@/lib/bark/actions';
 
 type PaymentType = 'ark' | 'lightning_invoice' | 'lightning_address' | 'onchain' | 'unknown';
@@ -106,7 +106,7 @@ export function SendDialog() {
 
   const getIcon = () => {
     switch (detectedType) {
-      case 'ark': return <Zap className="h-5 w-5 text-yellow-500" />;
+      case 'ark': return <Ship className="h-5 w-5 text-yellow-500" />;
       case 'lightning_invoice': 
       case 'lightning_address': return <Zap className="h-5 w-5 text-blue-500" />;
       case 'onchain': return <Bitcoin className="h-5 w-5 text-orange-500" />;
@@ -166,12 +166,14 @@ export function SendDialog() {
             {step === 'details' && (
               <div className="space-y-4 animate-in slide-in-from-right-4 duration-200">
                 <div className="space-y-1">
-                  <Label>Amount (sats)</Label>
+                  <Label>
+                    {detectedType === 'lightning_invoice' ? 'Amount (Optional)' : 'Amount (sats)'}
+                  </Label>
                   <Input
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    placeholder={detectedType === 'lightning_invoice' ? "Optional (if in invoice)" : "10000"}
+                    placeholder={detectedType === 'lightning_invoice' ? "Leave empty if amount is in invoice" : "10000"}
                   />
                 </div>
 

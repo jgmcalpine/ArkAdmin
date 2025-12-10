@@ -1,4 +1,4 @@
-import { Zap, Link } from "lucide-react";
+import { Ship, Link } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -64,7 +64,7 @@ export function WalletOverview({ balance }: WalletOverviewProps) {
           {/* Ark (L2) */}
           <div className="flex items-center gap-3">
             <div className="flex-shrink-0 text-yellow-600 dark:text-yellow-400">
-              <Zap className="h-6 w-6" />
+              <Ship className="h-6 w-6" />
             </div>
             <div className="min-w-0">
               <p className="text-sm text-muted-foreground">Ark (L2)</p>

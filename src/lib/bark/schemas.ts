@@ -70,6 +70,11 @@ export const SendLightningSchema = z.object({
   comment: z.string().optional(),
 });
 
+export const CreateInvoiceSchema = z.object({
+  amount: z.coerce.number().min(1, 'Amount must be at least 1 sat'),
+  description: z.string().optional().default('Ark Admin Receive'),
+});
+
 export const VtxoSchema = z.object({
   id: z.string(),
   amount_sat: z.number(),
@@ -128,6 +133,7 @@ export const UtxoSchema = z.object({
 });
 
 export type SendLightningInput = z.infer<typeof SendLightningSchema>;
+export type CreateInvoiceInput = z.infer<typeof CreateInvoiceSchema>;
 export type Balance = z.infer<typeof BalanceSchema>;
 export type NodeInfo = z.infer<typeof NodeInfoSchema>;
 export type Transaction = z.infer<typeof TransactionSchema>;

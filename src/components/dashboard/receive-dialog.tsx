@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowDown, Check, Copy, Zap, Bitcoin, Loader2 } from 'lucide-react';
+import { ArrowDown, Check, Copy, Zap, Bitcoin, Loader2, Ship } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -16,9 +16,11 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import { getNewOnchainAddress, getNewArkAddress } from '@/lib/bark/actions';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { getNewOnchainAddress, getNewArkAddress, createLightningInvoice } from '@/lib/bark/actions';
 
-type TabValue = 'ark' | 'btc';
+type TabValue = 'ark' | 'btc' | 'lightning';
 
 function truncateAddress(address: string): string {
   if (address.length <= 12) return address;
@@ -33,6 +35,13 @@ export function ReceiveDialog() {
   const [isCopied, setIsCopied] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabValue>('ark');
+  
+  // Lightning invoice state
+  const [invoice, setInvoice] = useState<string | null>(null);
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
+  const [amount, setAmount] = useState<string>('');
+  const [description, setDescription] = useState<string>('');
 
   const fetchArkAddress = async () => {
     if (arkAddress || isLoadingArk) return;
@@ -68,6 +77,10 @@ export function ReceiveDialog() {
       setArkAddress(null);
       setBtcAddress(null);
       setIsCopied(false);
+      setInvoice(null);
+      setAmount('');
+      setDescription('');
+      setInvoiceError(null);
     }
   }, [isOpen]);
 
@@ -86,20 +99,61 @@ export function ReceiveDialog() {
   const handleTabChange = (value: string) => {
     setActiveTab(value as TabValue);
     setIsCopied(false);
+    // Clear invoice state when switching tabs
+    setInvoice(null);
+    setInvoiceError(null);
   };
 
-  const handleCopy = async (address: string) => {
-    if (!address) return;
+  const handleCopy = async (text: string) => {
+    if (!text) return;
 
     try {
-      await navigator.clipboard.writeText(address);
+      await navigator.clipboard.writeText(text);
       setIsCopied(true);
       setTimeout(() => {
         setIsCopied(false);
       }, 2000);
     } catch (error) {
-      console.error('Failed to copy address', error);
+      console.error('Failed to copy', error);
     }
+  };
+
+  const handleGenerateInvoice = async () => {
+    if (!amount || isGeneratingInvoice) return;
+
+    const amountNum = Number.parseFloat(amount);
+    if (isNaN(amountNum) || amountNum < 1) {
+      setInvoiceError('Amount must be at least 1 sat');
+      return;
+    }
+
+    setIsGeneratingInvoice(true);
+    setInvoiceError(null);
+
+    try {
+      const result = await createLightningInvoice({
+        amount: amountNum,
+        description: description || 'Ark Admin Receive',
+      });
+
+      if (result.success && result.invoice) {
+        setInvoice(result.invoice);
+      } else {
+        setInvoiceError(result.message || 'Failed to generate invoice');
+      }
+    } catch (error) {
+      console.error('Failed to generate invoice', error);
+      setInvoiceError('Network error occurred');
+    } finally {
+      setIsGeneratingInvoice(false);
+    }
+  };
+
+  const handleCreateNew = () => {
+    setInvoice(null);
+    setAmount('');
+    setDescription('');
+    setInvoiceError(null);
   };
 
   const renderAddressContent = (
@@ -178,14 +232,18 @@ export function ReceiveDialog() {
           <DialogTitle>Receive Funds</DialogTitle>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="ark">
-              <Zap className="mr-2 h-4 w-4" />
+              <Ship className="mr-2 h-4 w-4" />
               Ark (L2)
             </TabsTrigger>
             <TabsTrigger value="btc">
               <Bitcoin className="mr-2 h-4 w-4" />
               Bitcoin (L1)
+            </TabsTrigger>
+            <TabsTrigger value="lightning">
+              <Zap className="mr-2 h-4 w-4" />
+              Lightning
             </TabsTrigger>
           </TabsList>
           <TabsContent value="ark" className="space-y-4">
@@ -202,6 +260,99 @@ export function ReceiveDialog() {
               isLoadingBtc,
               'Use this address to fund your wallet from a faucet.',
               fetchBtcAddress,
+            )}
+          </TabsContent>
+          <TabsContent value="lightning" className="space-y-4">
+            {invoice ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="invoice">Lightning Invoice</Label>
+                  <textarea
+                    id="invoice"
+                    readOnly
+                    value={invoice}
+                    className="flex min-h-[120px] w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm font-mono break-all resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleCopy(invoice)}
+                    variant="outline"
+                    className="flex-1"
+                    disabled={isCopied}
+                  >
+                    {isCopied ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy Invoice
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleCreateNew}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Create New
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  Share this invoice to receive Lightning payments.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="amount">Amount (sats) *</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    min="1"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="Enter amount in sats"
+                    disabled={isGeneratingInvoice}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description (optional)</Label>
+                  <Input
+                    id="description"
+                    type="text"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Ark Admin Receive"
+                    disabled={isGeneratingInvoice}
+                  />
+                </div>
+                {invoiceError && (
+                  <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                    {invoiceError}
+                  </div>
+                )}
+                <Button
+                  onClick={handleGenerateInvoice}
+                  className="w-full"
+                  disabled={!amount || isGeneratingInvoice}
+                >
+                  {isGeneratingInvoice ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4 mr-2" />
+                      Generate Invoice
+                    </>
+                  )}
+                </Button>
+              </div>
             )}
           </TabsContent>
         </Tabs>
