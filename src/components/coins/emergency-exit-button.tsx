@@ -52,7 +52,7 @@ export function EmergencyExitButton({ disabled = false }: EmergencyExitButtonPro
       <AlertDialogTrigger asChild>
         <Button
           variant="destructive"
-          className="gap-2"
+          className={`gap-2 ${disabled ? 'pointer-events-none' : ''}`}
           aria-label="Emergency Exit"
           disabled={disabled}
         >
