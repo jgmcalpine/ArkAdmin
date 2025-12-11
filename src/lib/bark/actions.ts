@@ -100,7 +100,13 @@ export type SendResponse = {
 export type CreateInvoiceResponse = {
   success: boolean;
   invoice?: string;
+  paymentHash?: string;
   message?: string;
+};
+
+export type CheckLightningStatusResponse = {
+  success: boolean;
+  status: string;
 };
 
 async function postJson(url: string, body: Record<string, unknown>): Promise<SendResponse> {
@@ -305,6 +311,7 @@ export async function createLightningInvoice(input: CreateInvoiceInput): Promise
         return {
           success: true,
           invoice: data.invoice,
+          paymentHash: data.payment_hash || data.paymentHash,
           message: data?.message || 'Invoice created successfully',
         };
       }
@@ -323,6 +330,60 @@ export async function createLightningInvoice(input: CreateInvoiceInput): Promise
     return {
       success: false,
       message: 'Network error occurred',
+    };
+  }
+}
+
+/**
+ * Checks the status of a Lightning payment by payment hash.
+ * Endpoint: GET /api/v1/lightning/receives/{paymentHash}
+ * Returns: { success: boolean, status: string } (e.g., "settled", "pending", "expired")
+ */
+export async function checkLightningStatus(paymentHash: string): Promise<CheckLightningStatusResponse> {
+  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+  const url = `${baseUrl}/api/v1/lightning/receives/${paymentHash}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+
+    const rawText = await response.text();
+
+    if (!response.ok) {
+      try {
+        const data = JSON.parse(rawText);
+        return {
+          success: false,
+          status: data?.status || data?.message || data?.error || 'unknown',
+        };
+      } catch {
+        return {
+          success: false,
+          status: 'unknown',
+        };
+      }
+    }
+
+    try {
+      const data = JSON.parse(rawText);
+      return {
+        success: true,
+        status: data?.status || 'unknown',
+      };
+    } catch {
+      return {
+        success: false,
+        status: 'unknown',
+      };
+    }
+  } catch (error) {
+    console.error('Failed to check lightning status', error);
+    return {
+      success: false,
+      status: 'unknown',
     };
   }
 }

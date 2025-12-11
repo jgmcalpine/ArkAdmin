@@ -1,11 +1,11 @@
 'use client';
 
+import type { ReactElement } from 'react';
 import { useKeypad } from '@/lib/pos/use-keypad';
 import { Keypad } from '@/components/pos/keypad';
 
-export default function PosPage(): JSX.Element {
+export default function PosPage(): ReactElement {
   const { value, append, backspace, clear } = useKeypad(8);
-
   const handleCharge = (): void => {
     // TODO: Implement charge logic
     console.log('Charge:', value);

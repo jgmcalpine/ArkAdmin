@@ -7,8 +7,6 @@ vi.mock('../env', () => ({
   },
 }));
 
-import { sendArkPayment, sendOnchainPayment } from './actions';
-
 const mockFetch = vi.fn();
 
 beforeEach(() => {
@@ -20,14 +18,16 @@ beforeEach(() => {
     text: vi.fn().mockResolvedValue(''),
   } as unknown as Response);
 
-  global.fetch = mockFetch as unknown as typeof fetch;
+  vi.stubGlobal('fetch', mockFetch);
 });
+
+import { sendArkPayment, sendOnchainPayment } from './actions';
 
 describe('bark send actions', () => {
   it('sendArkPayment posts correct payload', async () => {
     const input = {
       destination: 'ark_destination_12345',
-      amount: 5000,
+      amount: 10000,
       comment: 'test memo',
     };
 
