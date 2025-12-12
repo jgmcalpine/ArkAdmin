@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, Send, Zap, Bitcoin, CheckCircle2, ArrowRight, AlertCircle, Ship } from 'lucide-react';
-import { sendArkPayment, sendOnchainPayment, sendLightningPayment, type SendResponse } from '@/lib/bark/actions';
+import { sendArkPayment, sendOnchainPayment, sendLightningPayment, type ActionResponse } from '@/lib/bark/actions';
 
 type PaymentType = 'ark' | 'lightning_invoice' | 'lightning_address' | 'onchain' | 'unknown';
 
@@ -68,7 +68,7 @@ export function SendDialog() {
     setLoading(true);
     setError(null);
 
-    let result: SendResponse | undefined;
+    let result: ActionResponse | undefined;
     const amountNum = amount ? Number(amount) : undefined;
 
     try {

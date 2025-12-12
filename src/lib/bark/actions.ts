@@ -3,553 +3,289 @@
 import { revalidatePath } from 'next/cache';
 import { decode } from 'light-bolt11-decoder';
 import { env } from '../env';
-import { SendL1Schema, SendL2Schema, type SendL1Input, type SendL2Input, SendLightningSchema, type SendLightningInput, CreateInvoiceSchema, type CreateInvoiceInput } from './schemas';
+import { 
+  SendL1Schema, 
+  SendL2Schema, 
+  SendLightningSchema, 
+  CreateInvoiceSchema, 
+  type SendL1Input, 
+  type SendL2Input, 
+  type SendLightningInput, 
+  type CreateInvoiceInput 
+} from './schemas';
 
-/**
- * Generates a new On-Chain Bitcoin Address.
- * 
- * IMPLEMENTATION NOTE: 
- * We use a manual 'fetch' here because the generated SDK incorrectly 
- * uses GET for this endpoint, while the Bark Server mandates POST.
- * 
- * Endpoint: POST /api/v1/onchain/addresses/next
- * Response: { "address": "tb1q..." }
- */
-export async function getNewOnchainAddress(): Promise<string | null> {
-  console.log(`[Server] Requesting new L1 address...`);
-  try {
-    const baseUrl = env.BARKD_URL.replace(/\/$/, '');
-    const url = `${baseUrl}/api/v1/onchain/addresses/next`;
+// --- Shared Types ---
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    if (!response.ok) {
-      console.error(`Address generation failed: ${response.status} ${response.statusText}`);
-      return null;
-    }
-
-    const data = await response.json();
-    
-    // Confirmed via SDK definition (Address interface)
-    if (data && typeof data.address === 'string') {
-      return data.address;
-    }
-
-    console.error('Invalid response format from daemon', data);
-    return null;
-
-  } catch (error) {
-    console.error('Failed to get new address:', error);
-    return null;
-  }
-}
-
-/**
- * Generates a new Ark L2 Address.
- * 
- * IMPLEMENTATION NOTE: 
- * We use a manual 'fetch' here because the generated SDK may not support
- * this endpoint correctly.
- * 
- * Endpoint: POST /api/v1/wallet/addresses/next
- * Response: { "address": "tark..." }
- */
-export async function getNewArkAddress(): Promise<string | null> {
-  try {
-    const baseUrl = env.BARKD_URL.replace(/\/$/, '');
-    const url = `${baseUrl}/api/v1/wallet/addresses/next`;
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    if (!response.ok) {
-      console.error(`Ark address generation failed: ${response.status} ${response.statusText}`);
-      return null;
-    }
-
-    const data = await response.json();
-    
-    if (data && typeof data.address === 'string') {
-      return data.address;
-    }
-
-    console.error('Invalid response format from daemon', data);
-    return null;
-
-  } catch (error) {
-    console.error('Failed to get new Ark address:', error);
-    return null;
-  }
-}
-
-export type SendResponse = {
+export type ActionResponse<T = void> = {
   success: boolean;
   message: string;
+  data?: T;
 };
 
-export type CreateInvoiceResponse = {
-  success: boolean;
-  invoice?: string;
-  paymentHash?: string;
-  message?: string;
+// Helper type for the decoder since the library might lack types or return loose objects
+type Bolt11Section = {
+  name: string;
+  value: string;
+  [key: string]: unknown;
 };
 
-export type CheckLightningStatusResponse = {
-  success: boolean;
-  status: string;
-};
-
-async function postJson(url: string, body: Record<string, unknown>): Promise<SendResponse> {
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store',
-        body: JSON.stringify(body),
-      });
-  
-      // Read response text FIRST
-      const rawText = await response.text();
-  
-      if (!response.ok) {
-        // Try to parse as JSON
-        try {
-          const data = JSON.parse(rawText);
-          if (data?.message) return { success: false, message: data.message };
-          if (data?.error) return { success: false, message: data.error };
-        } catch {
-          // Not JSON, fall through to return raw text
-        }
-  
-        // Return raw text if JSON parsing failed or no message/error field
-        return {
-          success: false,
-          message: rawText || `Request failed: ${response.status} ${response.statusText}`,
-        };
-      }
-  
-      // Success case: try to parse JSON for potential message
-      try {
-        const data = JSON.parse(rawText);
-        if (data?.message) return { success: true, message: data.message };
-      } catch {
-        // Not JSON, use default success message
-      }
-  
-      return { success: true, message: 'Action successful' };
-    } catch (error) {
-      console.error('Request failed', error);
-      return { success: false, message: 'Network error occurred' };
-    }
-  }
-
-export async function sendArkPayment(input: SendL2Input): Promise<SendResponse> {
-  const parsed = SendL2Schema.safeParse(input);
-  if (!parsed.success) {
-    return {
-      success: false,
-      message: parsed.error.issues[0]?.message ?? 'Invalid request',
-    };
-  }
-
-  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
-  const url = `${baseUrl}/api/v1/wallet/send`;
-
-  const payload = {
-    destination: parsed.data.destination,
-    amount_sat: parsed.data.amount,
-    ...(parsed.data.comment ? { comment: parsed.data.comment } : {}),
-  };
-
-  return postJson(url, payload);
-}
-
-export async function sendOnchainPayment(input: SendL1Input): Promise<SendResponse> {
-  const parsed = SendL1Schema.safeParse(input);
-  if (!parsed.success) {
-    return {
-      success: false,
-      message: parsed.error.issues[0]?.message ?? 'Invalid request',
-    };
-  }
-
-  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
-  const url = `${baseUrl}/api/v1/onchain/send`;
-
-  const payload = {
-    destination: parsed.data.destination,
-    amount_sat: parsed.data.amount,
-  };
-
-  return postJson(url, payload);
-}
+// --- Internal Network Helper ---
 
 /**
- * Syncs the node by calling both wallet and onchain sync endpoints.
- * Revalidates the dashboard page after successful sync.
+ * Centralized Fetch wrapper for Bark Daemon.
+ * Handles URL construction, Headers, and the "Ugly JSON" error parsing.
  */
-export async function syncNode(): Promise<void> {
+async function barkFetch<T = void>(
+  endpoint: string, 
+  options: RequestInit = {}
+): Promise<ActionResponse<T>> {
   try {
+    // 1. Construct URL
     const baseUrl = env.BARKD_URL.replace(/\/$/, '');
+    const url = `${baseUrl}/api/v1${endpoint}`;
+
+    // 2. Default Headers
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    // 3. Execute
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      cache: 'no-store',
+    });
+
+    // 4. Robust Response Parsing
+    const rawText = await response.text();
+    let jsonBody: unknown = null;
     
-    // Perform both sync operations
-    const walletSyncPromise = fetch(`${baseUrl}/api/v1/wallet/sync`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    const onchainSyncPromise = fetch(`${baseUrl}/api/v1/onchain/sync`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    // Wait for both syncs to complete
-    const [walletResponse, onchainResponse] = await Promise.all([
-      walletSyncPromise,
-      onchainSyncPromise,
-    ]);
-
-    // Check if both were successful
-    if (walletResponse.ok && onchainResponse.ok) {
-      revalidatePath('/');
-    } else {
-      console.error('Sync failed:', {
-        wallet: walletResponse.status,
-        onchain: onchainResponse.status,
-      });
+    try {
+      jsonBody = JSON.parse(rawText);
+    } catch {
+      // Not JSON, ignore
     }
+
+    if (!response.ok) {
+      // Prioritize structured error messages
+      // We safely cast to record to check fields
+      const errObj = jsonBody as Record<string, unknown> | null;
+      
+      const errorMsg = 
+        (typeof errObj?.message === 'string' ? errObj.message : null) || 
+        (typeof errObj?.error === 'string' ? errObj.error : null) || 
+        (rawText.length < 200 ? rawText : `Request failed: ${response.status}`);
+        
+      return { success: false, message: errorMsg };
+    }
+
+    return { 
+      success: true, 
+      message: 'Success', 
+      data: jsonBody as T 
+    };
+
   } catch (error) {
-    console.error('Failed to sync node:', error);
+    console.error(`Bark API Error [${endpoint}]:`, error);
+    return { success: false, message: 'Network connection failed' };
   }
 }
 
-export async function sendLightningPayment(input: SendLightningInput): Promise<SendResponse> {
-    const parsed = SendLightningSchema.safeParse(input);
-    if (!parsed.success) {
-      return {
-        success: false,
-        message: parsed.error.issues[0]?.message ?? 'Invalid request',
-      };
-    }
-  
-    const baseUrl = env.BARKD_URL.replace(/\/$/, '');
-    const url = `${baseUrl}/api/v1/lightning/pay`; // Specific endpoint
-  
-    const payload = {
+// --- Address Management ---
+
+export async function getNewOnchainAddress(): Promise<string | null> {
+  console.log('[Server] Requesting new L1 address...');
+  // Explicitly tell barkFetch we expect an object with an 'address' string
+  const res = await barkFetch<{ address: string }>('/onchain/addresses/next', { method: 'POST' });
+  return res.success && res.data ? res.data.address : null;
+}
+
+export async function getNewArkAddress(): Promise<string | null> {
+  const res = await barkFetch<{ address: string }>('/wallet/addresses/next', { method: 'POST' });
+  return res.success && res.data ? res.data.address : null;
+}
+
+// --- Sending ---
+
+export async function sendArkPayment(input: SendL2Input): Promise<ActionResponse> {
+  const parsed = SendL2Schema.safeParse(input);
+  if (!parsed.success) return { success: false, message: parsed.error.issues[0].message };
+
+  const res = await barkFetch<void>('/wallet/send', {
+    method: 'POST',
+    body: JSON.stringify({
       destination: parsed.data.destination,
-      amount_sat: parsed.data.amount, // Optional
-      ...(parsed.data.comment ? { comment: parsed.data.comment } : {}),
-    };
-  
-    return postJson(url, payload);
-  }
+      amount_sat: parsed.data.amount,
+      comment: parsed.data.comment,
+    }),
+  });
 
-/**
- * Creates a Lightning invoice for receiving funds.
- * Endpoint: POST /api/v1/lightning/receives/invoice
- * Body: { amount_sat: input.amount, description: input.description }
- */
-export async function createLightningInvoice(input: CreateInvoiceInput): Promise<CreateInvoiceResponse> {
+  if (res.success) revalidatePath('/coins');
+  return res;
+}
+
+export async function sendOnchainPayment(input: SendL1Input): Promise<ActionResponse> {
+  const parsed = SendL1Schema.safeParse(input);
+  if (!parsed.success) return { success: false, message: parsed.error.issues[0].message };
+
+  const res = await barkFetch<void>('/onchain/send', {
+    method: 'POST',
+    body: JSON.stringify({
+      destination: parsed.data.destination,
+      amount_sat: parsed.data.amount,
+    }),
+  });
+
+  if (res.success) revalidatePath('/');
+  return res;
+}
+
+export async function sendLightningPayment(input: SendLightningInput): Promise<ActionResponse> {
+  const parsed = SendLightningSchema.safeParse(input);
+  if (!parsed.success) return { success: false, message: parsed.error.issues[0].message };
+
+  const res = await barkFetch<void>('/lightning/pay', {
+    method: 'POST',
+    body: JSON.stringify({
+      destination: parsed.data.destination,
+      amount_sat: parsed.data.amount,
+      comment: parsed.data.comment,
+    }),
+  });
+
+  if (res.success) revalidatePath('/coins');
+  return res;
+}
+
+// --- Receiving (Invoice) ---
+
+export async function createLightningInvoice(input: CreateInvoiceInput): Promise<ActionResponse<{ invoice: string; paymentHash: string }>> {
   const parsed = CreateInvoiceSchema.safeParse(input);
-  if (!parsed.success) {
-    return {
-      success: false,
-      message: parsed.error.issues[0]?.message ?? 'Invalid request',
-    };
-  }
+  if (!parsed.success) return { success: false, message: parsed.error.issues[0].message };
 
-  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
-  const url = `${baseUrl}/api/v1/lightning/receives/invoice`;
+  const res = await barkFetch<{ invoice: string }>('/lightning/receives/invoice', {
+    method: 'POST',
+    body: JSON.stringify({
+      amount_sat: parsed.data.amount,
+      description: parsed.data.description,
+    }),
+  });
 
+  if (!res.success || !res.data) return { success: false, message: res.message };
+
+  // Decode Logic
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      cache: 'no-store',
-      body: JSON.stringify({
-        amount_sat: parsed.data.amount,
-        description: parsed.data.description,
-      }),
-    });
+    const invoice = res.data.invoice;
+    const decoded = decode(invoice);
+    
+    // Type Guard for the sections
+    const sections = (decoded.sections || []) as Bolt11Section[];
+    const hashSection = sections.find((s) => s.name === 'payment_hash');
+    const paymentHash = hashSection?.value;
 
-    const rawText = await response.text();
-
-    if (!response.ok) {
-      try {
-        const data = JSON.parse(rawText);
-        return {
-          success: false,
-          message: data?.message || data?.error || rawText || `Request failed: ${response.status} ${response.statusText}`,
-        };
-      } catch {
-        return {
-          success: false,
-          message: rawText || `Request failed: ${response.status} ${response.statusText}`,
-        };
-      }
-    }
-
-    try {
-      const data = JSON.parse(rawText);
-      if (data?.invoice) {
-        const invoice = data.invoice;
-
-        try {
-          const decoded = decode(invoice);
-          const hashSection = decoded.sections?.find(
-            (s): s is { name: 'payment_hash'; tag: 'p'; letters: string; value: string } =>
-              s.name === 'payment_hash',
-          );
-          const paymentHash = hashSection?.value;
-
-          if (!paymentHash || typeof paymentHash !== 'string') {
-            console.error(
-              'Payment hash not found in decoded invoice',
-              decoded,
-            );
-            return {
-              success: false,
-              message: 'Failed to extract payment hash from invoice (required for status polling)',
-            };
-          }
-
-          return {
-            success: true,
-            invoice,
-            paymentHash,
-            message: data?.message || 'Invoice created successfully',
-          };
-        } catch (decodeError) {
-          console.error('Failed to decode invoice:', decodeError);
-          return {
-            success: false,
-            message: 'Failed to decode invoice (required for payment hash extraction)',
-          };
-        }
-      }
+    if (!paymentHash || typeof paymentHash !== 'string') {
+      console.error('Payment hash not found in decoded invoice');
       return {
         success: false,
-        message: data?.message || 'Invalid response format: missing invoice',
-      };
-    } catch {
-      return {
-        success: false,
-        message: 'Invalid response format: not JSON',
+        message: 'Failed to extract payment hash from invoice (required for status polling)',
       };
     }
-  } catch (error) {
-    console.error('Failed to create invoice', error);
-    return {
-      success: false,
-      message: 'Network error occurred',
+
+    return { 
+      success: true, 
+      message: 'Invoice created', 
+      data: { invoice, paymentHash } 
     };
+  } catch (e) {
+    console.error('Invoice Decode Error:', e);
+    return { success: false, message: 'Created invoice but failed to decode hash.' };
   }
 }
 
-/**
- * Checks the status of a Lightning payment by payment hash.
- * Endpoint: GET /api/v1/lightning/receives/{paymentHash}
- * Returns: { success: boolean, status: string } (e.g., "settled", "pending", "expired")
- */
-export async function checkLightningStatus(paymentHash: string): Promise<CheckLightningStatusResponse> {
-  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
-  const url = `${baseUrl}/api/v1/lightning/receives/${paymentHash}`;
-
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      cache: 'no-store',
-    });
-
-    const rawText = await response.text();
-
-    if (!response.ok) {
-      try {
-        const data = JSON.parse(rawText);
-        return {
-          success: false,
-          status: data?.status || data?.message || data?.error || 'unknown',
-        };
-      } catch {
-        return {
-          success: false,
-          status: 'unknown',
-        };
-      }
-    }
-
-    try {
-      const data = JSON.parse(rawText);
-      return {
-        success: true,
-        status: data?.status || 'unknown',
-      };
-    } catch {
-      return {
-        success: false,
-        status: 'unknown',
-      };
-    }
-  } catch (error) {
-    console.error('Failed to check lightning status', error);
-    return {
-      success: false,
-      status: 'unknown',
-    };
-  }
-}
-
-/**
- * Refreshes a specific VTXO by ID.
- * Endpoint: POST /api/v1/wallet/refresh/vtxos
- * Body: { vtxos: [vtxoId] }
- */
-export async function refreshVtxo(vtxoId: string): Promise<SendResponse> {
-  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
-  const url = `${baseUrl}/api/v1/wallet/refresh/vtxos`;
-
-  const result = await postJson(url, { vtxos: [vtxoId] });
-
-  if (result.success) {
-    revalidatePath('/coins');
-    return { success: true, message: 'VTXO refreshed successfully' };
-  }
-
-  return result;
-}
-
-/**
- * Refreshes all VTXOs.
- * Endpoint: POST /api/v1/wallet/refresh/all
- * Body: {}
- */
-export async function refreshAllVtxos(): Promise<SendResponse> {
-  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
-  const url = `${baseUrl}/api/v1/wallet/refresh/all`;
-
-  const result = await postJson(url, {});
-
-  if (result.success) {
-    revalidatePath('/coins');
-    return { success: true, message: 'All VTXOs refreshed successfully' };
-  }
-
-  return result;
-}
-
-/**
- * Force exits all funds to Bitcoin L1 (emergency).
- * Endpoint: POST /api/v1/exits/start/all
- * Body: {}
- */
-export async function forceExitAll(): Promise<SendResponse> {
-  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
-  const url = `${baseUrl}/api/v1/exits/start/all`;
-
-  const result = await postJson(url, {});
-
-  if (result.success) {
-    revalidatePath('/coins');
-    return { success: true, message: 'Emergency exit started' };
-  }
-
-  return result;
-}
-
-/**
- * Exits a VTXO to L1 (Offboard).
- * Endpoint: POST /api/v1/wallet/offboard/vtxos
- * Body: { vtxos: [vtxoId] }
- */
-export async function exitVtxo(vtxoId: string): Promise<SendResponse> {
-  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
-  const url = `${baseUrl}/api/v1/wallet/offboard/vtxos`;
-
-  const result = await postJson(url, { vtxos: [vtxoId] });
-
-  if (result.success) {
-    revalidatePath('/coins');
-    return { success: true, message: 'VTXO exited to L1 successfully' };
-  }
-
-  return result;
-}
-
-/**
- * Onboards L1 Bitcoin funds to Ark L2 (Deposit).
- * Endpoint: POST /api/v1/boards/board-amount
- * Body: { amount_sat: amount }
- */
-export async function onboardFunds(amount: number): Promise<SendResponse> {
-  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
-  const url = `${baseUrl}/api/v1/boards/board-amount`;
-
-  const result = await postJson(url, { amount_sat: amount });
-
-  if (result.success) {
-    revalidatePath('/coins');
-    return { success: true, message: 'Funds onboarded successfully' };
-  }
-
-  return result;
-}
-
-/**
- * Claims a VTXO by broadcasting the sweep transaction to L1.
- * Endpoint: POST /api/v1/exits/claim/vtxos
- * Body: { vtxos: [vtxoId], destination: address }
- */
-export async function claimVtxo(vtxoId: string): Promise<SendResponse> {
-  console.log(`[Server] Starting claim for VTXO: ${vtxoId}`);
-  // First, get a new onchain address for the destination
-  const destination = await getNewOnchainAddress();
+export async function checkLightningStatus(paymentHash: string): Promise<{ success: boolean; status: string }> {
+  // Define expected shape of response
+  const res = await barkFetch<{ status: string; message?: string }>(`/lightning/receives/${paymentHash}`, { method: 'GET' });
   
-  if (!destination) {
-    return {
-      success: false,
-      message: 'Failed to generate destination address',
-    };
-  }
+  if (!res.success) return { success: false, status: 'unknown' };
+  
+  // Handle inconsistent API returns (sometimes 'status', sometimes 'message')
+  const status = res.data?.status || res.data?.message || 'unknown';
+  return { success: true, status };
+}
+
+// --- VTXO Management ---
+
+export async function refreshVtxo(vtxoId: string): Promise<ActionResponse> {
+  const res = await barkFetch<void>('/wallet/refresh/vtxos', {
+    method: 'POST',
+    body: JSON.stringify({ vtxos: [vtxoId] }),
+  });
+  if (res.success) revalidatePath('/coins');
+  return res;
+}
+
+export async function refreshAllVtxos(): Promise<ActionResponse> {
+  const res = await barkFetch<void>('/wallet/refresh/all', { method: 'POST', body: '{}' });
+  if (res.success) revalidatePath('/coins');
+  return res;
+}
+
+export async function forceExitAll(): Promise<ActionResponse> {
+  const res = await barkFetch<void>('/exits/start/all', { method: 'POST', body: '{}' });
+  if (res.success) revalidatePath('/coins');
+  return res;
+}
+
+export async function exitVtxo(vtxoId: string): Promise<ActionResponse> {
+  const res = await barkFetch<void>('/wallet/offboard/vtxos', {
+    method: 'POST',
+    body: JSON.stringify({ vtxos: [vtxoId] }),
+  });
+  if (res.success) revalidatePath('/coins');
+  return res;
+}
+
+export async function claimVtxo(vtxoId: string): Promise<ActionResponse> {
+  console.log(`[Server] Starting claim for VTXO: ${vtxoId}`);
+  
+  // 1. Get Address
+  const destination = await getNewOnchainAddress();
+  if (!destination) return { success: false, message: 'Failed to generate sweep address' };
 
   console.log(`[Server] Generated sweep address: ${destination}`);
 
-  const baseUrl = env.BARKD_URL.replace(/\/$/, '');
-  const url = `${baseUrl}/api/v1/exits/claim/vtxos`;
+  // 2. Claim
+  const res = await barkFetch<void>('/exits/claim/vtxos', {
+    method: 'POST',
+    body: JSON.stringify({ vtxos: [vtxoId], destination }),
+  });
 
-  const result = await postJson(url, { vtxos: [vtxoId], destination });
-
-  console.log(`[Server] Claim response:`, JSON.stringify(result));
-
-  if (result.success) {
-    revalidatePath('/coins');
-    return { success: true, message: 'Funds claimed successfully' };
-  }
-
-  return result;
+  console.log(`[Server] Claim response:`, JSON.stringify(res));
+  if (res.success) revalidatePath('/coins');
+  return res;
 }
 
-/**
- * Verifies the POS exit PIN.
- * Note: In production, consider using constant-time comparison or hashing.
- */
+export async function onboardFunds(amount: number): Promise<ActionResponse> {
+  const res = await barkFetch<void>('/boards/board-amount', {
+    method: 'POST',
+    body: JSON.stringify({ amount_sat: amount }),
+  });
+  if (res.success) revalidatePath('/coins');
+  return res;
+}
+
+// --- Sync & Utilities ---
+
+export async function syncNode(): Promise<void> {
+  // Fire and forget, but wait for result to revalidate
+  await Promise.allSettled([
+    barkFetch<void>('/wallet/sync', { method: 'POST' }),
+    barkFetch<void>('/onchain/sync', { method: 'POST' })
+  ]);
+  revalidatePath('/');
+}
+
 export async function verifyPosPin(pin: string): Promise<boolean> {
   return pin === env.POS_PIN;
 }

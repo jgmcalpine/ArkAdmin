@@ -105,23 +105,16 @@ export function usePayment(): UsePaymentReturn {
             description: description || 'POS Payment',
           });
 
-          if (!result.success || !result.invoice) {
-            setStatus('error');
+          if (result.success && result.data) {
+            setInvoice(result.data.invoice);
+            setHash(result.data.paymentHash);
+            setStatus('awaiting_payment');
+            setError(null);
+            startLightningPolling(result.data.paymentHash);
+          } else {
             setError(result.message || 'Failed to create invoice');
-            return;
-          }
-
-          const paymentHash = result.paymentHash;
-          if (!paymentHash) {
             setStatus('error');
-            setError('Payment hash not returned from server');
-            return;
           }
-
-          setInvoice(result.invoice);
-          setHash(paymentHash);
-          setStatus('awaiting_payment');
-          startLightningPolling(paymentHash);
         } else if (type === 'ark') {
           // Fetch current vtxos to get initial count
           const vtxos = await fetchVtxos();
