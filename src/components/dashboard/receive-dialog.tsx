@@ -136,8 +136,8 @@ export function ReceiveDialog() {
         description: description || 'Ark Admin Receive',
       });
 
-      if (result.success && result.invoice) {
-        setInvoice(result.invoice);
+      if (result.success && result.data) {
+        setInvoice(result.data.invoice);
       } else {
         setInvoiceError(result.message || 'Failed to generate invoice');
       }

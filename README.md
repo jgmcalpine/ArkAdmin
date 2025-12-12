@@ -157,22 +157,50 @@ Open http://localhost:3001 in your browser.
 
 You can run ArkAdmin as a containerized application. This is ideal for deployment on home servers (Umbrel, Start9) or keeping your dev environment clean.
 
-### 1. Build the Image:
+### Production Deployment (Docker Compose)
+
+Docker Compose simplifies deployment and management of the ArkAdmin service.
+
+**1. Build the service:**
+```bash
+docker compose build
 ```
+
+**2. Start the service:**
+```bash
+docker compose up -d
+```
+
+**3. Update the service:**
+```bash
+git pull && docker compose up -d --build
+```
+
+The service will automatically restart on system reboot (`restart: always`). Environment variables can be configured via a `.env` file or passed directly to `docker compose`. By default, it connects to `barkd` at `http://host.docker.internal:3000` and uses `POS_PIN=1234`.
+
+### Manual Docker Deployment
+
+For manual Docker deployment without Compose:
+
+**1. Build the Image:**
+```bash
 docker build -t arkadmin .
 ```
 
-### 2. Run the Container:
+**2. Run the Container:**
 
 Since barkd runs on your host machine (port 3000), we must use host.docker.internal to allow the container to reach it.
 
-```
+```bash
 docker run -p 3001:3001 \
   -e BARKD_URL="http://host.docker.internal:3000" \
+  -e POS_PIN="1234" \
+  --add-host=host.docker.internal:host-gateway \
+  --restart always \
   arkadmin
 ```
 
-Linux Users: If host.docker.internal does not work, add --add-host=host.docker.internal:host-gateway to the run command.
+Linux Users: The `--add-host=host.docker.internal:host-gateway` flag ensures the container can reach the host machine.
 
-### 3. Access:
+**3. Access:**
 Open http://localhost:3001. The app is now running in production mode (optimized, no hot-reloading).

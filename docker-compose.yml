@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  arkadmin:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - BARKD_URL=${BARKD_URL:-http://host.docker.internal:3000}
+      - POS_PIN=${POS_PIN:-1234}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+

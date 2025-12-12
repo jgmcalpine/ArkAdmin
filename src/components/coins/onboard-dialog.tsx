@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, PlusCircle, CheckCircle2, AlertCircle } from 'lucide-react';
-import { onboardFunds, type SendResponse } from '@/lib/bark/actions';
+import { onboardFunds, type ActionResponse } from '@/lib/bark/actions';
 
 const MIN_AMOUNT = 10000;
 const DEFAULT_AMOUNT = 20000;
@@ -48,7 +48,7 @@ export function OnboardDialog() {
     }
 
     try {
-      const result: SendResponse = await onboardFunds(amountNum);
+      const result: ActionResponse = await onboardFunds(amountNum);
 
       if (!result.success) {
         setError(result.message);
