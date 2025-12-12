@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { decode } from 'light-bolt11-decoder';
 import { env } from '../env';
 import { SendL1Schema, SendL2Schema, type SendL1Input, type SendL2Input, SendLightningSchema, type SendLightningInput, CreateInvoiceSchema, type CreateInvoiceInput } from './schemas';
 
@@ -308,12 +309,40 @@ export async function createLightningInvoice(input: CreateInvoiceInput): Promise
     try {
       const data = JSON.parse(rawText);
       if (data?.invoice) {
-        return {
-          success: true,
-          invoice: data.invoice,
-          paymentHash: data.payment_hash || data.paymentHash,
-          message: data?.message || 'Invoice created successfully',
-        };
+        const invoice = data.invoice;
+
+        try {
+          const decoded = decode(invoice);
+          const hashSection = decoded.sections?.find(
+            (s): s is { name: 'payment_hash'; tag: 'p'; letters: string; value: string } =>
+              s.name === 'payment_hash',
+          );
+          const paymentHash = hashSection?.value;
+
+          if (!paymentHash || typeof paymentHash !== 'string') {
+            console.error(
+              'Payment hash not found in decoded invoice',
+              decoded,
+            );
+            return {
+              success: false,
+              message: 'Failed to extract payment hash from invoice (required for status polling)',
+            };
+          }
+
+          return {
+            success: true,
+            invoice,
+            paymentHash,
+            message: data?.message || 'Invoice created successfully',
+          };
+        } catch (decodeError) {
+          console.error('Failed to decode invoice:', decodeError);
+          return {
+            success: false,
+            message: 'Failed to decode invoice (required for payment hash extraction)',
+          };
+        }
       }
       return {
         success: false,
