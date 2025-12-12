@@ -21,7 +21,7 @@ export function QrDisplay({
   mode,
   onCancel,
   onModeChange,
-}: QrDisplayProps): JSX.Element {
+}: QrDisplayProps) {
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopy = async (): Promise<void> => {

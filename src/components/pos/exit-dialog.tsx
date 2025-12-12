@@ -20,7 +20,7 @@ interface ExitDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function ExitDialog({ open, onOpenChange }: ExitDialogProps): JSX.Element {
+export function ExitDialog({ open, onOpenChange }: ExitDialogProps) {
   const router = useRouter();
   const [pin, setPin] = useState<string>("");
   const [error, setError] = useState<string | null>(null);

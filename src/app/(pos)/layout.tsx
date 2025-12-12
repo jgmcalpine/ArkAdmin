@@ -23,7 +23,7 @@ export default function PosLayout({
   children,
 }: {
   children: ReactNode;
-}): JSX.Element {
+}) {
   return (
     <div className="min-h-screen w-full bg-zinc-950 text-zinc-50 overflow-hidden touch-none select-none pt-14">
       <PosHeader />

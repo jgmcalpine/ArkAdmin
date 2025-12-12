@@ -14,7 +14,7 @@ const formatTime = () =>
     minute: "2-digit",
   }).format(new Date());
 
-export function PosHeader(): JSX.Element {
+export function PosHeader() {
   const [mounted, setMounted] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<string>("");
   const [isOnline, setIsOnline] = useState<boolean>(true);

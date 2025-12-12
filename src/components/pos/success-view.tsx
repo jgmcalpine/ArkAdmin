@@ -8,7 +8,7 @@ type SuccessViewProps = {
   onReset: () => void;
 };
 
-export function SuccessView({ onReset }: SuccessViewProps): JSX.Element {
+export function SuccessView({ onReset }: SuccessViewProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
       onReset();

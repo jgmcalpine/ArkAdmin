@@ -32,7 +32,7 @@ function KeypadButton({
   disabled,
   children,
   className,
-}: KeypadButtonProps): JSX.Element {
+}: KeypadButtonProps) {
   return (
     <button
       type="button"
@@ -51,7 +51,7 @@ export function Keypad({
   onClear,
   onCharge,
   chargeDisabled = false,
-}: KeypadProps): JSX.Element {
+}: KeypadProps) {
   return (
     <div className="flex flex-col gap-4 max-w-md mx-auto w-full">
       <div className="grid grid-cols-3 gap-3">
