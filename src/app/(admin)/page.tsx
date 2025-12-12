@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { fetchNodeInfo, fetchBalances, fetchTransactions, fetchArkMovements } from "@/lib/bark/queries";
 import { ConnectAlert } from "@/components/dashboard/connect-alert";
 import { WalletOverview } from "@/components/dashboard/wallet-overview";
