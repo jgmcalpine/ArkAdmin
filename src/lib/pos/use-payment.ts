@@ -1,14 +1,17 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { createLightningInvoice, checkLightningStatus } from '../bark/actions';
+import { createLightningInvoice, checkLightningStatus, getNewArkAddress } from '../bark/actions';
+import { fetchVtxos } from '../bark/queries';
 
 export type PaymentState = 'idle' | 'creating' | 'awaiting_payment' | 'paid' | 'error';
+export type PaymentMode = 'lightning' | 'ark';
 
 type UsePaymentReturn = {
   status: PaymentState;
   invoice: string | null;
   hash: string | null;
   error: string | null;
-  startTransaction: (amount: number, description?: string) => Promise<void>;
+  mode: PaymentMode;
+  startTransaction: (amount: number, type: PaymentMode, description?: string) => Promise<void>;
   reset: () => void;
 };
 
@@ -17,8 +20,12 @@ export function usePayment(): UsePaymentReturn {
   const [invoice, setInvoice] = useState<string | null>(null);
   const [hash, setHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<PaymentMode>('lightning');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [initialVtxoCount, setInitialVtxoCount] = useState<number>(0);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const initialVtxoCountRef = useRef<number>(0);
 
   const stopPolling = useCallback(() => {
     if (intervalRef.current) {
@@ -27,7 +34,7 @@ export function usePayment(): UsePaymentReturn {
     }
   }, []);
 
-  const startPolling = useCallback(
+  const startLightningPolling = useCallback(
     (paymentHash: string) => {
       stopPolling();
 
@@ -61,42 +68,85 @@ export function usePayment(): UsePaymentReturn {
     [stopPolling],
   );
 
+  const startArkPolling = useCallback(
+    (initialCount: number) => {
+      stopPolling();
+
+      intervalRef.current = setInterval(async () => {
+        try {
+          const vtxos = await fetchVtxos();
+
+          if (vtxos.length > initialCount) {
+            setStatus('paid');
+            stopPolling();
+          }
+        } catch (err) {
+          setStatus('error');
+          setError(err instanceof Error ? err.message : 'Network error occurred');
+          stopPolling();
+        }
+      }, 2000);
+    },
+    [stopPolling],
+  );
+
   const startTransaction = useCallback(
-    async (amount: number, description?: string) => {
+    async (amount: number, type: PaymentMode, description?: string) => {
       setStatus('creating');
       setError(null);
       setInvoice(null);
       setHash(null);
+      setMode(type);
 
       try {
-        const result = await createLightningInvoice({
-          amount,
-          description: description || 'POS Payment',
-        });
+        if (type === 'lightning') {
+          const result = await createLightningInvoice({
+            amount,
+            description: description || 'POS Payment',
+          });
 
-        if (!result.success || !result.invoice) {
-          setStatus('error');
-          setError(result.message || 'Failed to create invoice');
-          return;
+          if (!result.success || !result.invoice) {
+            setStatus('error');
+            setError(result.message || 'Failed to create invoice');
+            return;
+          }
+
+          const paymentHash = result.paymentHash;
+          if (!paymentHash) {
+            setStatus('error');
+            setError('Payment hash not returned from server');
+            return;
+          }
+
+          setInvoice(result.invoice);
+          setHash(paymentHash);
+          setStatus('awaiting_payment');
+          startLightningPolling(paymentHash);
+        } else if (type === 'ark') {
+          // Fetch current vtxos to get initial count
+          const vtxos = await fetchVtxos();
+          const count = vtxos.length;
+          setInitialVtxoCount(count);
+          initialVtxoCountRef.current = count;
+
+          // Get new Ark address
+          const address = await getNewArkAddress();
+          if (!address) {
+            setStatus('error');
+            setError('Failed to generate Ark address');
+            return;
+          }
+
+          setInvoice(address);
+          setStatus('awaiting_payment');
+          startArkPolling(count);
         }
-
-        const paymentHash = result.paymentHash;
-        if (!paymentHash) {
-          setStatus('error');
-          setError('Payment hash not returned from server');
-          return;
-        }
-
-        setInvoice(result.invoice);
-        setHash(paymentHash);
-        setStatus('awaiting_payment');
-        startPolling(paymentHash);
       } catch (err) {
         setStatus('error');
-        setError(err instanceof Error ? err.message : 'Failed to create invoice');
+        setError(err instanceof Error ? err.message : 'Failed to start transaction');
       }
     },
-    [startPolling],
+    [startLightningPolling, startArkPolling],
   );
 
   const reset = useCallback(() => {
@@ -105,6 +155,8 @@ export function usePayment(): UsePaymentReturn {
     setInvoice(null);
     setHash(null);
     setError(null);
+    setInitialVtxoCount(0);
+    initialVtxoCountRef.current = 0;
   }, [stopPolling]);
 
   useEffect(() => {
@@ -118,6 +170,7 @@ export function usePayment(): UsePaymentReturn {
     invoice,
     hash,
     error,
+    mode,
     startTransaction,
     reset,
   };

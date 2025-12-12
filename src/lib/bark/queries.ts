@@ -1,3 +1,5 @@
+'use server';
+
 import { env } from '../env';
 import { z } from 'zod';
 import { getWalletApi, getOnchainApi } from './client';

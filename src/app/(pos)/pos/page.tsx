@@ -1,8 +1,9 @@
 'use client';
 
 import type { ReactElement } from 'react';
+import { useState } from 'react';
 import { useKeypad } from '@/lib/pos/use-keypad';
-import { usePayment } from '@/lib/pos/use-payment';
+import { usePayment, type PaymentMode } from '@/lib/pos/use-payment';
 import { Keypad } from '@/components/pos/keypad';
 import { QrDisplay } from '@/components/pos/qr-display';
 import { SuccessView } from '@/components/pos/success-view';
@@ -12,11 +13,21 @@ import { AlertCircle } from 'lucide-react';
 export default function PosPage(): ReactElement {
   const { value, append, backspace, clear } = useKeypad(8);
   const payment = usePayment();
+  const [mode, setMode] = useState<PaymentMode>('lightning');
 
   const handleCharge = async (): Promise<void> => {
     const amount = Number(value);
     if (amount > 0 && !Number.isNaN(amount)) {
-      await payment.startTransaction(amount);
+      await payment.startTransaction(amount, mode);
+    }
+  };
+
+  const handleModeChange = async (newMode: PaymentMode): Promise<void> => {
+    setMode(newMode);
+    const amount = Number(value);
+    if (amount > 0 && !Number.isNaN(amount) && payment.status === 'awaiting_payment') {
+      payment.reset();
+      await payment.startTransaction(amount, newMode);
     }
   };
 
@@ -34,7 +45,9 @@ export default function PosPage(): ReactElement {
       <QrDisplay
         invoice={payment.invoice}
         amount={value}
+        mode={payment.mode}
         onCancel={handleCancel}
+        onModeChange={handleModeChange}
       />
     );
   }
