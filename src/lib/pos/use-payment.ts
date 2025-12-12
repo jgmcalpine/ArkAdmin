@@ -106,6 +106,11 @@ export function usePayment(): UsePaymentReturn {
           });
 
           if (result.success && result.data) {
+            if (!result.data.paymentHash) {
+              setError('Payment hash not returned from server');
+              setStatus('error');
+              return;
+            }
             setInvoice(result.data.invoice);
             setHash(result.data.paymentHash);
             setStatus('awaiting_payment');

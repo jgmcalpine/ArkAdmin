@@ -1,11 +1,20 @@
 import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { usePayment } from './use-payment';
+
+vi.mock('../env', () => ({
+  env: {
+    BARKD_URL: 'http://localhost:3001',
+    NODE_ENV: 'test',
+    POS_PIN: '1234',
+  },
+}));
 
 vi.mock('../bark/actions', () => ({
   createLightningInvoice: vi.fn(),
   checkLightningStatus: vi.fn(),
 }));
+
+import { usePayment } from './use-payment';
 
 import { createLightningInvoice, checkLightningStatus } from '../bark/actions';
 
@@ -29,8 +38,10 @@ describe('usePayment', () => {
 
     vi.mocked(createLightningInvoice).mockResolvedValue({
       success: true,
-      invoice: mockInvoice,
-      paymentHash: mockHash,
+      data: {
+        invoice: mockInvoice,
+        paymentHash: mockHash,
+      },
       message: 'Invoice created',
     });
 
@@ -39,7 +50,7 @@ describe('usePayment', () => {
     expect(result.current.status).toBe('idle');
 
     await act(async () => {
-      await result.current.startTransaction(1000, 'Test payment');
+      await result.current.startTransaction(1000, 'lightning', 'Test payment');
     });
 
     // Should transition to awaiting_payment after successful invoice creation
@@ -60,8 +71,10 @@ describe('usePayment', () => {
 
     vi.mocked(createLightningInvoice).mockResolvedValue({
       success: true,
-      invoice: mockInvoice,
-      paymentHash: mockHash,
+      data: {
+        invoice: mockInvoice,
+        paymentHash: mockHash,
+      },
       message: 'Invoice created',
     });
 
@@ -79,7 +92,7 @@ describe('usePayment', () => {
     const { result } = renderHook(() => usePayment());
 
     await act(async () => {
-      await result.current.startTransaction(1000);
+      await result.current.startTransaction(1000, 'lightning');
     });
 
     expect(result.current.status).toBe('awaiting_payment');
@@ -111,7 +124,7 @@ describe('usePayment', () => {
     const { result } = renderHook(() => usePayment());
 
     await act(async () => {
-      await result.current.startTransaction(1000);
+      await result.current.startTransaction(1000, 'lightning');
     });
 
     expect(result.current.status).toBe('error');
@@ -123,14 +136,16 @@ describe('usePayment', () => {
   it('handles missing payment hash', async () => {
     vi.mocked(createLightningInvoice).mockResolvedValue({
       success: true,
-      invoice: 'lnbc1234567890',
-      // paymentHash is missing
-    });
+      data: {
+        invoice: 'lnbc1234567890',
+        paymentHash: undefined as unknown as string,
+      },
+    } as any);
 
     const { result } = renderHook(() => usePayment());
 
     await act(async () => {
-      await result.current.startTransaction(1000);
+      await result.current.startTransaction(1000, 'lightning');
     });
 
     expect(result.current.status).toBe('error');
@@ -144,8 +159,10 @@ describe('usePayment', () => {
 
     vi.mocked(createLightningInvoice).mockResolvedValue({
       success: true,
-      invoice: mockInvoice,
-      paymentHash: mockHash,
+      data: {
+        invoice: mockInvoice,
+        paymentHash: mockHash,
+      },
     });
 
     vi.mocked(checkLightningStatus).mockResolvedValue({
@@ -156,7 +173,7 @@ describe('usePayment', () => {
     const { result } = renderHook(() => usePayment());
 
     await act(async () => {
-      await result.current.startTransaction(1000);
+      await result.current.startTransaction(1000, 'lightning');
     });
 
     expect(result.current.status).toBe('awaiting_payment');
@@ -177,8 +194,10 @@ describe('usePayment', () => {
 
     vi.mocked(createLightningInvoice).mockResolvedValue({
       success: true,
-      invoice: mockInvoice,
-      paymentHash: mockHash,
+      data: {
+        invoice: mockInvoice,
+        paymentHash: mockHash,
+      },
     });
 
     vi.mocked(checkLightningStatus).mockResolvedValue({
@@ -189,7 +208,7 @@ describe('usePayment', () => {
     const { result } = renderHook(() => usePayment());
 
     await act(async () => {
-      await result.current.startTransaction(1000);
+      await result.current.startTransaction(1000, 'lightning');
     });
 
     await act(async () => {
@@ -208,8 +227,10 @@ describe('usePayment', () => {
 
     vi.mocked(createLightningInvoice).mockResolvedValue({
       success: true,
-      invoice: mockInvoice,
-      paymentHash: mockHash,
+      data: {
+        invoice: mockInvoice,
+        paymentHash: mockHash,
+      },
     });
 
     vi.mocked(checkLightningStatus).mockResolvedValue({
@@ -220,7 +241,7 @@ describe('usePayment', () => {
     const { result } = renderHook(() => usePayment());
 
     await act(async () => {
-      await result.current.startTransaction(1000);
+      await result.current.startTransaction(1000, 'lightning');
     });
 
     expect(result.current.status).toBe('awaiting_payment');
@@ -256,8 +277,10 @@ describe('usePayment', () => {
 
     vi.mocked(createLightningInvoice).mockResolvedValue({
       success: true,
-      invoice: mockInvoice,
-      paymentHash: mockHash,
+      data: {
+        invoice: mockInvoice,
+        paymentHash: mockHash,
+      },
     });
 
     vi.mocked(checkLightningStatus).mockResolvedValue({
@@ -268,7 +291,7 @@ describe('usePayment', () => {
     const { result, unmount } = renderHook(() => usePayment());
 
     await act(async () => {
-      await result.current.startTransaction(1000);
+      await result.current.startTransaction(1000, 'lightning');
     });
 
     expect(result.current.status).toBe('awaiting_payment');
@@ -294,14 +317,16 @@ describe('usePayment', () => {
 
     vi.mocked(createLightningInvoice).mockResolvedValue({
       success: true,
-      invoice: mockInvoice,
-      paymentHash: mockHash,
+      data: {
+        invoice: mockInvoice,
+        paymentHash: mockHash,
+      },
     });
 
     const { result } = renderHook(() => usePayment());
 
     await act(async () => {
-      await result.current.startTransaction(1000);
+      await result.current.startTransaction(1000, 'lightning');
     });
 
     expect(createLightningInvoice).toHaveBeenCalledWith({

@@ -7,6 +7,10 @@ vi.mock('../env', () => ({
   },
 }));
 
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
+}));
+
 const mockFetch = vi.fn();
 
 beforeEach(() => {
