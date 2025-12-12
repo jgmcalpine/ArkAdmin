@@ -545,3 +545,11 @@ export async function claimVtxo(vtxoId: string): Promise<SendResponse> {
 
   return result;
 }
+
+/**
+ * Verifies the POS exit PIN.
+ * Note: In production, consider using constant-time comparison or hashing.
+ */
+export async function verifyPosPin(pin: string): Promise<boolean> {
+  return pin === env.POS_PIN;
+}

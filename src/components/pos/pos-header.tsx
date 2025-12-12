@@ -1,8 +1,9 @@
  "use client";
 
-import Link from "next/link";
 import { DoorOpen } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { ExitDialog } from "./exit-dialog";
 
 const POS_HEADER_CLASS =
   "fixed inset-x-0 top-0 z-50 h-14 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/75";
@@ -17,6 +18,7 @@ export function PosHeader(): JSX.Element {
   const [mounted, setMounted] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<string>("");
   const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [exitDialogOpen, setExitDialogOpen] = useState<boolean>(false);
 
   const statusColor = useMemo(
     () => (isOnline ? "bg-emerald-500" : "bg-red-500"),
@@ -70,15 +72,17 @@ export function PosHeader(): JSX.Element {
             <span className="text-zinc-200">Network</span>
           </div>
 
-          <Link
-            href="/"
+          <Button
+            onClick={() => setExitDialogOpen(true)}
             className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-100 ring-1 ring-zinc-800 transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
             <DoorOpen className="h-4 w-4" aria-hidden />
             Exit
-          </Link>
+          </Button>
         </div>
       </div>
+
+      <ExitDialog open={exitDialogOpen} onOpenChange={setExitDialogOpen} />
     </header>
   );
 }
