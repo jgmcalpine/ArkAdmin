@@ -110,6 +110,7 @@ export const PendingRoundSchema = z.object({
   id: z.number(),
   kind: z.string(), // e.g. "PendingConfirmation"
   round_txid: z.string().optional().nullable(),
+  input_vtxos: z.array(z.string()).optional(),
 });
 
 export const UtxoSchema = z.object({

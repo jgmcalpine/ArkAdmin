@@ -10,7 +10,7 @@ import {
 } from "@/lib/bark/queries"
 import { VtxoTable } from "@/components/coins/vtxo-table"
 import { UtxoTable } from "@/components/coins/utxo-table"
-import { RecoveryCard } from "@/components/coins/recovery-card"
+import { ActivityFeed } from "@/components/dashboard/activity-feed"
 import { OnboardDialog } from "@/components/coins/onboard-dialog"
 import { EmergencyExitButton } from "@/components/coins/emergency-exit-button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -61,7 +61,7 @@ export default async function CoinsPage() {
           <OnboardDialog />
         </div>
       </div>
-      <RecoveryCard
+      <ActivityFeed
         exits={exits}
         rounds={rounds}
         currentHeight={currentHeight}

@@ -7,9 +7,10 @@ const progressVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-yellow-500 dark:bg-yellow-400",
+        default: "bg-blue-500 dark:bg-blue-400",
         destructive: "bg-destructive",
         success: "bg-green-500",
+        orange: "bg-orange-500 dark:bg-orange-400",
       },
     },
     defaultVariants: {
@@ -21,10 +22,11 @@ const progressVariants = cva(
 export interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
   value?: number
   variant?: VariantProps<typeof progressVariants>["variant"]
+  animate?: boolean
 }
 
 const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
-  ({ className, value = 0, variant = "default", ...props }, ref) => (
+  ({ className, value = 0, variant = "default", animate = false, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
@@ -34,7 +36,10 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
       {...props}
     >
       <div
-        className={cn(progressVariants({ variant }))}
+        className={cn(
+          progressVariants({ variant }),
+          animate && "animate-pulse"
+        )}
         style={{ width: `${Math.min(100, Math.max(0, value || 0))}%` }}
       />
     </div>

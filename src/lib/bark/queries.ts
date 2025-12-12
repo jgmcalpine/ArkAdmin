@@ -296,6 +296,9 @@ export async function fetchExitProgress(): Promise<ExitProgress[]> {
 
     const rawData = await response.json();
     
+    // Debug logging for stuck exits
+    console.log('[DEBUG Exits]', JSON.stringify(rawData, null, 2));
+    
     // Handle empty/null gracefully
     if (!rawData || !rawData.exits) {
       return [];
@@ -341,6 +344,14 @@ export async function fetchPendingRounds(): Promise<PendingRound[]> {
 
     const rawData = await response.json();
     
+    // Debug logging for zombie rounds
+    console.log('[DEBUG Rounds]', JSON.stringify(rawData, null, 2));
+    
+    // Deep log first item structure to find hidden fields
+    if (rawData && Array.isArray(rawData) && rawData.length > 0) {
+      console.log('DEBUG ROUND STRUCTURE:', JSON.stringify(rawData[0], null, 2));
+    }
+    
     // Handle empty/null gracefully
     if (!rawData || !Array.isArray(rawData)) {
       return [];
@@ -354,7 +365,8 @@ export async function fetchPendingRounds(): Promise<PendingRound[]> {
       return [];
     }
 
-    return result.data;
+    // Filter out finished/failed rounds (zombie rounds that don't need user attention)
+    return result.data.filter((r) => r.kind !== 'Finished' && r.kind !== 'Failed');
   } catch (error) {
     console.error('Failed to fetch pending rounds:', error);
     return [];
