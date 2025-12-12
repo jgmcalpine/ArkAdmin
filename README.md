@@ -152,3 +152,27 @@ npm run dev
 The application will start on Port 3001 to avoid conflicting with the daemon.
 
 Open http://localhost:3001 in your browser.
+
+## Running with Docker
+
+You can run ArkAdmin as a containerized application. This is ideal for deployment on home servers (Umbrel, Start9) or keeping your dev environment clean.
+
+### 1. Build the Image:
+```
+docker build -t arkadmin .
+```
+
+### 2. Run the Container:
+
+Since barkd runs on your host machine (port 3000), we must use host.docker.internal to allow the container to reach it.
+
+```
+docker run -p 3001:3001 \
+  -e BARKD_URL="http://host.docker.internal:3000" \
+  arkadmin
+```
+
+Linux Users: If host.docker.internal does not work, add --add-host=host.docker.internal:host-gateway to the run command.
+
+### 3. Access:
+Open http://localhost:3001. The app is now running in production mode (optimized, no hot-reloading).
