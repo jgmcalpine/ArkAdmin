@@ -1,6 +1,6 @@
 # ArkAdmin
 
-ArkAdmin is a modern, web-based Control Plane for [barkd](https://gitlab.com/ark-bitcoin/barkd-clients/-/tree/master/clients/typescript?ref_type=heads) (the Bark Wallet Daemon). It provides a visual interface for the Ark Layer 2 Protocol, enabling users to seamlessly swap between L1 and L2, monitor VTXO expirations, and perform trustless unilateral exits without touching the command line.
+ArkAdmin is a modern, web-based Control Plane for [barkd](https://gitlab.com/ark-bitcoin/bark) (the Bark Wallet Daemon). It provides a visual interface for the Ark Layer 2 Protocol, enabling users to seamlessly swap between L1 and L2, monitor VTXO expirations, and perform trustless unilateral exits without touching the command line.
 
 ## Architecture
 
@@ -11,8 +11,8 @@ ArkAdmin is a modern, web-based Control Plane for [barkd](https://gitlab.com/ark
 
 ## Project Structure
 
-- `/`: Admin Dashboard
-- `/pos`: Point of Sale Terminal
+- `/`: Admin Dashboard (Management & Logistics)
+- `/pos`: Point of Sale Terminal (Kiosk Mode)
 
 ## Test Drive: A Walkthrough
 If you have the application running (see Installation below), follow this path to verify the entire lifecycle of an Ark Transaction.
@@ -39,12 +39,18 @@ Verification: Your Bitcoin Balance will decrease, and your Ark Balance will incr
 
 Verification: Refresh the page after a few minutes, notice the expiry date update. After Refreshing the VTXO you will see the expiry date reset.
 
-**4. The Exit (Unilateral Redemption)**
+**4. Collaborative Exit (Standard Offboard)**
+- The "Happy Path" for leaving.
 - On the Coins page, find a "Spendable" VTXO.
-- Click the Log Out (Exit) icon.
-- Confirm the dialog warning.
+- Click the Log Out (Exit) icon in the Actions column.
 
-Verification: The coin will vanish from L2. Refresh the coins page and you should see it pending. After a few minutes, you will see a new transaction in your On-Chain History on the Dashboard. You have successfully performed a unilateral exit.
+Verification: The coin enters a Round. Once the round confirms, the funds move seamlessly to your Bitcoin Balance without complex timelocks. This is the cheapest way to exit.
+
+**5. Emergency Exit (Unilateral Redemption)**
+- On the Coins page, look for the red "Emergency Exit" button at the top.
+- Click it and confirm the dialog warning.
+
+Verification: All coins will vanish from L2. A "Recovering Funds" card will appear at the top showing "Timelock Active." After the timelock expires (24h+ on Mainnet, usually less on Signet) and you sweep the funds, they will return to your On-Chain History on the Dashboard.
 
 ## Requirements
 
