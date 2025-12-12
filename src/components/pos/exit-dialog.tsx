@@ -24,12 +24,20 @@ export function ExitDialog({ open, onOpenChange }: ExitDialogProps) {
   const router = useRouter();
   const [pin, setPin] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [dialogKey, setDialogKey] = useState<number>(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpenChange = (newOpen: boolean): void => {
+    if (newOpen) {
+      setPin("");
+      setError(null);
+      setDialogKey((prev) => prev + 1);
+    }
+    onOpenChange(newOpen);
+  };
 
   useEffect(() => {
     if (open) {
-      setPin("");
-      setError(null);
       // Focus input when dialog opens
       setTimeout(() => {
         inputRef.current?.focus();
@@ -59,8 +67,8 @@ export function ExitDialog({ open, onOpenChange }: ExitDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent key={dialogKey} className="bg-zinc-900 border-zinc-800 text-zinc-100">
         <DialogHeader>
           <DialogTitle className="text-zinc-100">Exit Kiosk Mode</DialogTitle>
           <DialogDescription className="text-zinc-400">
