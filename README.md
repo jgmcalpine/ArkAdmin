@@ -204,3 +204,12 @@ Linux Users: The `--add-host=host.docker.internal:host-gateway` flag ensures the
 
 **3. Access:**
 Open http://localhost:3001. The app is now running in production mode (optimized, no hot-reloading).
+
+## 🤖 AI-Augmented Development
+
+This project was built using an **AI-First / Pair-Programming workflow**.
+
+- **The Architect (Human):** Responsible for system design, protocol strategy, debugging network/daemon interactions, and defining the security constraints (e.g., Unilateral Exits).
+- **The Builder (AI):** Responsible for generating the majority of the React components, server actions, and TypeScript definitions based on iterative architectural prompts.
+
+**Methodology:** While the code was machine-generated, every logic flow was manually integrated and tested against the live Bitcoin Signet network to ensure behavior matches the protocol requirements.
