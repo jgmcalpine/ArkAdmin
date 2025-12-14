@@ -9,6 +9,11 @@ ArkAdmin is a modern, web-based Control Plane for [barkd](https://gitlab.com/ark
 - **Integration:** Connects to `barkd` (Rust) via the official TypeScript SDK.
 - **Network:** Bitcoin Signet.
 
+## Roadmap
+- [x] ArkAdmin (Control Plane)
+- [x] ArkPOS (Retail Terminal PWA)
+- [ ] **ArkFetch** (In Progress): A Developer API & Webhook gateway for ease of integration.
+
 ## Project Structure
 
 - `/`: Admin Dashboard (Management & Logistics)
