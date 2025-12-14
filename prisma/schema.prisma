@@ -1,0 +1,27 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Charge {
+  id            String    @id @default(cuid())
+  amountSat     Int
+  description   String?
+  webhookUrl    String?
+  status        String    @default("pending")
+  webhookStatus String    @default("pending")
+  paymentHash   String    @unique
+  invoice       String
+  metadata      String?
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
