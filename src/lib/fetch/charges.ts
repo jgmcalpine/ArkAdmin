@@ -5,7 +5,7 @@ export interface CreateChargeInput {
   amountSat: number;
   description?: string;
   webhookUrl?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   paymentHash: string;
   invoice: string;
   expiresAt?: Date;
@@ -94,3 +94,48 @@ export async function updateChargeStatus(
 
   return charge as Charge | null;
 }
+
+/**
+ * Retrieves all charges with status="pending".
+ * @returns Array of pending Charge records
+ */
+export async function getPendingCharges(): Promise<Charge[]> {
+  const charges = await db.charge.findMany({
+    where: { status: 'pending' },
+  });
+
+  return charges as Charge[];
+}
+
+/**
+ * Marks a charge as paid by ID.
+ * @param id - The Charge ID
+ * @returns The updated Charge record or null if not found
+ */
+export async function markChargePaid(id: string): Promise<Charge | null> {
+  const charge = await db.charge.update({
+    where: { id },
+    data: { status: 'paid' },
+  });
+
+  return charge as Charge | null;
+}
+
+/**
+ * Updates the webhook status of a Charge by ID.
+ * @param id - The Charge ID
+ * @param status - The new webhook status (e.g., 'success', 'failed', 'pending')
+ * @returns The updated Charge record or null if not found
+ */
+export async function updateWebhookStatus(
+  id: string,
+  status: string,
+): Promise<Charge | null> {
+  const charge = await db.charge.update({
+    where: { id },
+    data: { webhookStatus: status },
+  });
+
+  return charge as Charge | null;
+}
+

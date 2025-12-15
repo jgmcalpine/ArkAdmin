@@ -130,7 +130,7 @@ describe('POST /api/v1/charges', () => {
   });
 
   it('should return 401 if auth fails', async () => {
-    vi.mocked(authenticateApiKey).mockResolvedValue(false);
+    vi.mocked(authenticateApiKey).mockResolvedValueOnce(false);
 
     const mockRequest = new NextRequest('http://localhost/api/v1/charges', {
       method: 'POST',
