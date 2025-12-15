@@ -4,18 +4,20 @@ import { createCharge } from '@/lib/fetch/charges';
 import { ApiCreateChargeSchema } from '@/lib/fetch/api-schemas';
 
 export async function POST(request: Request) {
+  console.log("🔍 API Route Runtime Env:", process.env.DATABASE_URL);
+
   try {
     const body = await request.json();
     const parsed = ApiCreateChargeSchema.safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Validation error', details: parsed.error.errors },
+        { error: 'Validation error', details: parsed.error },
         { status: 400 },
       );
     }
 
-    const { amount, description, webhookUrl, metadata } = parsed.data;
+    const { amount, description = '', webhookUrl, metadata } = parsed.data;
 
     // Create lightning invoice via barkd
     const invoiceResult = await createLightningInvoice({
