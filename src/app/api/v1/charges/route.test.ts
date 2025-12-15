@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest';
+import { describe, expect, it, beforeEach, beforeAll, afterAll, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { PrismaClient } from '@/generated/prisma/client';
 import { execSync } from 'child_process';
@@ -23,9 +23,15 @@ vi.mock('@/lib/bark/actions', () => ({
   createLightningInvoice: vi.fn(),
 }));
 
+// Mock authentication - default to true for existing tests
+vi.mock('@/lib/fetch/auth', () => ({
+  authenticateApiKey: vi.fn(),
+}));
+
 // 3. Import Dependencies
 import { POST } from './route';
 import { createLightningInvoice } from '@/lib/bark/actions';
+import { authenticateApiKey } from '@/lib/fetch/auth';
 import { db } from '@/lib/fetch/db'; // Will use process.env.DATABASE_URL set above
 
 // 4. Test Helper
@@ -55,6 +61,8 @@ describe('POST /api/v1/charges', () => {
   beforeEach(async () => {
     await testDb.charge.deleteMany();
     vi.clearAllMocks();
+    // Default: all existing tests pass authentication
+    vi.mocked(authenticateApiKey).mockResolvedValue(true);
   });
 
   afterAll(async () => {
@@ -119,5 +127,20 @@ describe('POST /api/v1/charges', () => {
 
     const response = await POST(mockRequest);
     expect(response.status).toBe(502);
+  });
+
+  it('should return 401 if auth fails', async () => {
+    vi.mocked(authenticateApiKey).mockResolvedValue(false);
+
+    const mockRequest = new NextRequest('http://localhost/api/v1/charges', {
+      method: 'POST',
+      body: JSON.stringify({ amount: 1000 }),
+    });
+
+    const response = await POST(mockRequest);
+    expect(response.status).toBe(401);
+    
+    const data = await response.json();
+    expect(data.error).toBe('Unauthorized');
   });
 });

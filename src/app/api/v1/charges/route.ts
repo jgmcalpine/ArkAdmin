@@ -2,49 +2,60 @@ import { NextResponse } from 'next/server';
 import { createLightningInvoice } from '@/lib/bark/actions';
 import { createCharge } from '@/lib/fetch/charges';
 import { ApiCreateChargeSchema } from '@/lib/fetch/api-schemas';
+import { authenticateApiKey } from '@/lib/fetch/auth';
 
 export async function POST(request: Request) {
   console.log("🔍 API Route Runtime Env:", process.env.DATABASE_URL);
 
+  // Authenticate API key before any validation
+  if (!(await authenticateApiKey(request))) {
+    const response = NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 },
+    );
+    console.log(`❌ POST /api/v1/charges - Status: ${response.status}`);
+    return response;
+  }
+
   try {
     const body = await request.json();
-    const parsed = ApiCreateChargeSchema.safeParse(body);
+    const validation = ApiCreateChargeSchema.safeParse(body);
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Validation error', details: parsed.error },
+    if (!validation.success) {
+      const response = NextResponse.json(
+        { error: 'Validation error', details: validation.error },
         { status: 400 },
       );
+      console.log(`❌ POST /api/v1/charges - Status: ${response.status} - Validation error`);
+      return response;
     }
-
-    const { amount, description = '', webhookUrl, metadata } = parsed.data;
 
     // Create lightning invoice via barkd
-    const invoiceResult = await createLightningInvoice({
-      amount,
-      description,
+    const invoiceRes = await createLightningInvoice({
+      amount: validation.data.amount,
+      description: validation.data.description ?? '',
     });
 
-    if (!invoiceResult.success || !invoiceResult.data) {
-      return NextResponse.json(
-        { error: invoiceResult.message || 'Failed to create invoice' },
+    if (!invoiceRes.success || !invoiceRes.data) {
+      const response = NextResponse.json(
+        { error: invoiceRes.message || 'Failed to create invoice' },
         { status: 502 },
       );
+      console.log(`❌ POST /api/v1/charges - Status: ${response.status} - Upstream error`);
+      return response;
     }
-
-    const { invoice, paymentHash } = invoiceResult.data;
 
     // Save charge to database
     const charge = await createCharge({
-      amountSat: amount,
-      description,
-      webhookUrl,
-      metadata,
-      paymentHash,
-      invoice,
+      amountSat: validation.data.amount,
+      description: validation.data.description,
+      webhookUrl: validation.data.webhookUrl,
+      metadata: validation.data.metadata,
+      paymentHash: invoiceRes.data.paymentHash,
+      invoice: invoiceRes.data.invoice,
     });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         id: charge.id,
         invoice: charge.invoice,
@@ -53,20 +64,27 @@ export async function POST(request: Request) {
       },
       { status: 201 },
     );
+    console.log(`✅ POST /api/v1/charges - Status: ${response.status} - Charge created: ${charge.id}`);
+    return response;
   } catch (error) {
     // Handle JSON parsing errors
     if (error instanceof SyntaxError || error instanceof TypeError) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Invalid JSON in request body' },
         { status: 400 },
       );
+      console.log(`❌ POST /api/v1/charges - Status: ${response.status} - JSON parse error`);
+      return response;
     }
 
     // Handle other errors
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: errorMessage },
       { status: 500 },
     );
+    console.log(`❌ POST /api/v1/charges - Status: ${response.status} - ${errorMessage}`);
+    return response;
   }
 }
+
