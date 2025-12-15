@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { processWebhooks } from '@/lib/fetch/webhook-worker';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const stats = await processWebhooks();

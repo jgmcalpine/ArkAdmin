@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ReactElement } from 'react';
 import QRCode from 'react-qr-code';
 import { Copy, Check, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -90,7 +90,7 @@ export function CheckoutInterface({ charge: initialCharge }: CheckoutInterfacePr
     };
   }, [initialCharge.id, initialCharge.status]);
 
-  const renderContent = (): JSX.Element => {
+  const renderContent = (): ReactElement => {
     if (status === 'paid') {
       return (
         <div className="flex flex-col items-center gap-6">
@@ -179,3 +179,4 @@ export function CheckoutInterface({ charge: initialCharge }: CheckoutInterfacePr
     </Card>
   );
 }
+
