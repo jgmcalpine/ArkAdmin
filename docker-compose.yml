@@ -5,10 +5,12 @@ services:
     build: .
     ports:
       - "3001:3001"
+    volumes:
+      - ./data:/app/data
     environment:
       - BARKD_URL=${BARKD_URL:-http://host.docker.internal:3000}
+      - DATABASE_URL=file:/app/data/prod.db
       - POS_PIN=${POS_PIN:-1234}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: always
-
