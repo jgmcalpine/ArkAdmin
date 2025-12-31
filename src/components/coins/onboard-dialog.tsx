@@ -70,21 +70,21 @@ export function OnboardDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="gap-2">
-          <PlusCircle className="h-4 w-4" /> Deposit / Onboard
+          <PlusCircle className="h-4 w-4" /> Board Funds (L1 → L2)
         </Button>
       </DialogTrigger>
       
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {success ? 'Deposit Successful' : 'Deposit / Onboard Funds'}
+            {success ? 'Boarding Successful' : 'Board L1 Funds to Ark'}
           </DialogTitle>
         </DialogHeader>
 
         {success ? (
           <div className="flex flex-col items-center justify-center py-8 space-y-4">
             <CheckCircle2 className="h-16 w-16 text-green-500 animate-in zoom-in-50 duration-300" />
-            <p className="text-center font-medium">Funds onboarded successfully!</p>
+            <p className="text-center font-medium">Funds boarded successfully!</p>
           </div>
         ) : (
           <div className="space-y-4 py-2">
@@ -99,7 +99,7 @@ export function OnboardDialog() {
                 min={MIN_AMOUNT}
               />
               <p className="text-xs text-muted-foreground">
-                Converts L1 Bitcoin to Ark VTXOs. Min: {MIN_AMOUNT.toLocaleString()} sats.
+                This takes confirmed L1 Bitcoin and converts it into an Ark VTXO. Min: {MIN_AMOUNT.toLocaleString()} sats.
               </p>
             </div>
 
@@ -126,7 +126,7 @@ export function OnboardDialog() {
                     Processing...
                   </>
                 ) : (
-                  'Deposit'
+                  'Board'
                 )}
               </Button>
             </div>

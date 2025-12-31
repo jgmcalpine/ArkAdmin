@@ -64,13 +64,16 @@ export function EmergencyExitButton({ disabled = false }: EmergencyExitButtonPro
       <AlertDialogContent className="sm:max-w-lg">
         <AlertDialogHeader>
           <AlertDialogTitle>
-            ⚠ EMERGENCY EXIT: FORCE CLOSE ALL POSITIONS
+            ⚠ UNILATERAL EXIT: FORCE CLOSE
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-3 text-left">
               <p>
-                This will bypass the Service Provider and broadcast exit transactions
-                for ALL your Ark Coins to the Bitcoin Network.
+                This is a UNILATERAL EXIT that bypasses the Service Provider (ASP) and broadcasts exit transactions
+                for ALL your Ark Coins directly to the Bitcoin Network.
+              </p>
+              <p className="font-medium">
+                Unlike Offboarding (Cooperative Spend), this action enforces a timelock and cannot be stopped once initiated.
               </p>
               <ul className="list-disc space-y-1 pl-4">
                 <li>Funds will be timelocked (usually 24+ hours).</li>

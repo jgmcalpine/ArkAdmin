@@ -359,7 +359,7 @@ export function VtxoTable({ vtxos, currentHeight }: VtxoTableProps) {
                                 <p>
                                   {exitDisabled && !isExiting
                                     ? "Cannot exit locked or spending coins."
-                                    : "Exit to L1"}
+                                    : "Offboard to L1 (Cooperative Spend)"}
                                 </p>
                               </TooltipContent>
                             </Tooltip>
@@ -367,7 +367,7 @@ export function VtxoTable({ vtxos, currentHeight }: VtxoTableProps) {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Offboard to L1</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This will move 1 coin back to Bitcoin L1. Miner fees apply. Irreversible.
+                                  This is a cooperative spend that moves 1 coin back to Bitcoin L1 through the Service Provider. Miner fees apply. This is different from a Unilateral Exit (Force Close), which bypasses the Service Provider and enforces a timelock.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
