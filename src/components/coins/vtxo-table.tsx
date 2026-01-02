@@ -359,7 +359,7 @@ export function VtxoTable({ vtxos, currentHeight }: VtxoTableProps) {
                                 <p>
                                   {exitDisabled && !isExiting
                                     ? "Cannot exit locked or spending coins."
-                                    : "Offboard to L1 (Cooperative Spend)"}
+                                    : "Offboard"}
                                 </p>
                               </TooltipContent>
                             </Tooltip>

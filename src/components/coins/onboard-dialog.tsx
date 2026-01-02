@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,14 +19,15 @@ export function OnboardDialog() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    if (!open) {
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) {
       setAmount(DEFAULT_AMOUNT.toString());
       setError(null);
       setSuccess(false);
       setLoading(false);
     }
-  }, [open]);
+  };
 
   const handleAmountChange = (value: string) => {
     setAmount(value);
@@ -67,10 +68,10 @@ export function OnboardDialog() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button className="gap-2">
-          <PlusCircle className="h-4 w-4" /> Board Funds (L1 → L2)
+          <PlusCircle className="h-4 w-4" /> Board
         </Button>
       </DialogTrigger>
       
