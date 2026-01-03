@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import { createLightningInvoice } from '@/lib/bark/actions';
 import { createCharge } from '@/lib/fetch/charges';
 import { ApiCreateChargeSchema } from '@/lib/fetch/api-schemas';
@@ -55,8 +56,15 @@ export async function POST(request: Request) {
       invoice: invoiceRes.data.invoice,
     });
 
+    // Derive base URL from request headers
+    const headersList = await headers();
+    const host = headersList.get('host') || 'localhost:3001';
+    const protocol = headersList.get('x-forwarded-proto') || 'http';
+    const baseUrl = `${protocol}://${host}`;
+
     const response = NextResponse.json(
       {
+        paymentUrl: `${baseUrl}/pay/${charge.id}`,
         id: charge.id,
         invoice: charge.invoice,
         paymentHash: charge.paymentHash,
