@@ -7,19 +7,19 @@ A unified ecosystem of tools built for **`barkd`** (The Bark Wallet Daemon), des
 This repository contains three distinct applications operating as a Monorepo:
 
 ### 1. ArkAdmin (Control Plane)
-**Audience:** Node Operators ("Uncle Jim")
-**Purpose:** A visual dashboard to manage liquidity, inspect VTXOs, and perform trustless exits.
-*   **Features:** L1/L2 Balance tracking, VTXO Lifecycle Management (Refresh/Expiry), Unilateral Exit ("Panic Button"), and Auto-Sync Heartbeat.
+* **Audience:** Node Operators ("Uncle Jim")
+* **Purpose:** A visual dashboard to manage liquidity, inspect VTXOs, and perform trustless exits.
+* **Features:** L1/L2 Balance tracking, VTXO Lifecycle Management (Refresh/Expiry), Unilateral Exit ("Panic Button"), and Auto-Sync Heartbeat.
 
 ### 2. ArkPOS (Point of Sale)
-**Audience:** Merchants & Retail Staff
-**Purpose:** A touch-friendly, kiosk-mode PWA for accepting payments in a physical store.
-*   **Features:** Zero-Config Inbound Liquidity (via Ark), Lightning Network compatibility, PIN-Locked Exit.
+* **Audience:** Merchants & Retail Staff
+* **Purpose:** A touch-friendly, kiosk-mode PWA for accepting payments in a physical store.
+* **Features:** Zero-Config Inbound Liquidity (via Ark), Lightning Network compatibility, PIN-Locked Exit.
 
 ### 3. ArkFetch (Developer Platform)
-**Audience:** App Developers
-**Purpose:** A self-hosted Payment Processor API (like Stripe for Ark).
-*   **Features:** REST API (`POST /charges`), Webhook Dispatcher, API Key Authentication, SQLite persistence.
+* **Audience:** App Developers
+* **Purpose:** A self-hosted Payment Processor API (like Stripe for Ark).
+* **Features:** REST API (`POST /charges`), Webhook Dispatcher, API Key Authentication, SQLite persistence.
 
 ---
 
